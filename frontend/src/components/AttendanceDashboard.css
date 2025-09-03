@@ -1,0 +1,460 @@
+/* Attendance Dashboard Component Styles */
+.attendance-dashboard {
+  max-width: 100%;
+  padding: 1rem;
+  background: #f8f9fa;
+  min-height: 100vh;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.session-info h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: #1a1a1a;
+}
+
+.session-info .subject {
+  margin: 0 0 1rem 0;
+  color: #666;
+  font-size: 1rem;
+}
+
+.session-status {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.expired {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-badge.ended {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.time-remaining {
+  font-weight: 600;
+  color: #007bff;
+  font-size: 1rem;
+}
+
+/* Connection Status */
+.connection-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.connection-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.status-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.reconnect-button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.reconnect-button:hover {
+  background: #0056b3;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.metric-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #007bff;
+  margin-bottom: 0.5rem;
+  line-height: 1;
+}
+
+.metric-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.metric-change {
+  font-size: 0.8rem;
+  color: #28a745;
+  font-weight: 500;
+}
+
+.metric-change.neutral {
+  color: #ffc107;
+}
+
+.metric-change.negative {
+  color: #dc3545;
+}
+
+/* Dashboard Controls */
+.dashboard-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.time-range-filter {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filter-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.filter-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: white;
+  color: #495057;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-button.active {
+  background: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.filter-button:hover:not(.active) {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.notifications-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #666;
+}
+
+/* Student Joins Section */
+.student-joins-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.student-joins-section h3 {
+  margin: 0;
+  padding: 1.5rem;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 1.25rem;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.join-count {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 400;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #666;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.empty-subtitle {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  color: #999;
+}
+
+/* Joins List */
+.joins-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.join-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f8f9fa;
+  transition: background-color 0.2s ease;
+}
+
+.join-item:hover {
+  background: #f8f9fa;
+}
+
+.join-item.recent {
+  background: linear-gradient(90deg, #e8f5e8 0%, #ffffff 100%);
+  border-left: 4px solid #28a745;
+}
+
+.student-info {
+  flex: 1;
+}
+
+.student-name {
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.25rem;
+}
+
+.join-details {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.join-method {
+  text-transform: capitalize;
+}
+
+.join-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.new-badge {
+  background: #28a745;
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.join-icon {
+  font-size: 1.25rem;
+}
+
+/* Error Banner */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f8d7da;
+  color: #721c24;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  border: 1px solid #f5c6cb;
+}
+
+.error-icon {
+  font-size: 1.25rem;
+}
+
+.error-message {
+  flex: 1;
+  font-weight: 500;
+}
+
+.error-action {
+  background: #721c24;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.error-action:hover {
+  background: #5a1a1a;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .attendance-dashboard {
+    padding: 0.5rem;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .connection-status {
+    align-items: flex-start;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .metric-card {
+    padding: 1rem;
+  }
+
+  .metric-value {
+    font-size: 2rem;
+  }
+
+  .dashboard-controls {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .time-range-filter {
+    flex-wrap: wrap;
+  }
+
+  .filter-buttons {
+    flex-wrap: wrap;
+  }
+
+  .join-item {
+    padding: 0.75rem 1rem;
+  }
+
+  .join-details {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .attendance-dashboard {
+    background: #1a1a1a;
+    color: white;
+  }
+
+  .dashboard-header,
+  .metric-card,
+  .dashboard-controls,
+  .student-joins-section {
+    background: #2a2a2a;
+    color: white;
+  }
+
+  .session-info h2,
+  .student-joins-section h3,
+  .student-name {
+    color: white;
+  }
+
+  .join-item:hover {
+    background: #3a3a3a;
+  }
+
+  .join-item.recent {
+    background: linear-gradient(90deg, #1a3a1a 0%, #2a2a2a 100%);
+  }
+
+  .filter-button {
+    background: #3a3a3a;
+    border-color: #555;
+    color: white;
+  }
+
+  .filter-button:hover:not(.active) {
+    background: #4a4a4a;
+  }
+}

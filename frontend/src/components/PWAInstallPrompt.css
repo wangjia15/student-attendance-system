@@ -1,0 +1,353 @@
+/* PWA Install Prompt Component Styles */
+.pwa-install-prompt {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.install-prompt-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.install-prompt-content {
+  position: relative;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.install-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.app-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+.install-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.install-title h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.install-title p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.dismiss-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #adb5bd;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dismiss-button:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #6c757d;
+}
+
+/* Benefits Section */
+.install-benefits {
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.benefit-icon {
+  font-size: 1.1rem;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Install Actions */
+.install-actions {
+  padding: 0 1.5rem 1.5rem;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.install-button {
+  flex: 1;
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 48px;
+  position: relative;
+}
+
+.install-button.primary {
+  background: #007bff;
+  color: white;
+}
+
+.install-button.primary:hover:not(:disabled) {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.install-button.primary:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.install-button.secondary {
+  background: #f8f9fa;
+  color: #495057;
+  border: 1px solid #dee2e6;
+}
+
+.install-button.secondary:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+/* Manual Install Instructions */
+.manual-install {
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+.manual-install h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.install-steps {
+  margin: 0 0 1.5rem 0;
+  padding-left: 1.25rem;
+  color: #495057;
+}
+
+.install-steps li {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* Footer */
+.install-footer {
+  padding: 0 1.5rem 1.5rem;
+  text-align: center;
+}
+
+.install-footer small {
+  color: #6c757d;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 480px) {
+  .pwa-install-prompt {
+    padding: 0.5rem;
+  }
+
+  .install-prompt-content {
+    border-radius: 12px;
+    max-height: 95vh;
+  }
+
+  .install-header {
+    padding: 1.25rem 1.25rem 0.75rem;
+  }
+
+  .install-title h3 {
+    font-size: 1.1rem;
+  }
+
+  .install-benefits,
+  .manual-install {
+    padding: 1rem 1.25rem;
+  }
+
+  .install-actions {
+    padding: 0 1.25rem 1.25rem;
+    flex-direction: column;
+  }
+
+  .app-icon {
+    font-size: 2rem;
+  }
+}
+
+/* Landscape mobile */
+@media (max-height: 600px) and (orientation: landscape) {
+  .install-prompt-content {
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .install-benefits {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1rem;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .install-prompt-content {
+    border: 2px solid #000;
+  }
+
+  .install-header {
+    border-bottom-color: #000;
+    border-bottom-width: 2px;
+  }
+
+  .install-button.secondary {
+    border-color: #000;
+    border-width: 2px;
+  }
+
+  .dismiss-button:hover {
+    background: #000;
+    color: #fff;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .pwa-install-prompt,
+  .install-prompt-content {
+    animation: none;
+  }
+
+  .install-button:hover {
+    transform: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .install-prompt-content {
+    background: #2a2a2a;
+    color: white;
+  }
+
+  .install-title h3 {
+    color: white;
+  }
+
+  .install-title p {
+    color: #adb5bd;
+  }
+
+  .install-header {
+    border-bottom-color: #404040;
+  }
+
+  .benefit-item {
+    color: #e9ecef;
+  }
+
+  .install-button.secondary {
+    background: #3a3a3a;
+    color: #e9ecef;
+    border-color: #555;
+  }
+
+  .install-button.secondary:hover:not(:disabled) {
+    background: #4a4a4a;
+    border-color: #666;
+  }
+
+  .dismiss-button {
+    color: #6c757d;
+  }
+
+  .dismiss-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #adb5bd;
+  }
+
+  .install-footer small {
+    color: #6c757d;
+  }
+
+  .manual-install h4 {
+    color: white;
+  }
+
+  .install-steps {
+    color: #e9ecef;
+  }
+}
