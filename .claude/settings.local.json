@@ -31,7 +31,16 @@
       "Bash(test:*)",
       "mcp__rube__RUBE_SEARCH_TOOLS",
       "mcp__rube__RUBE_MANAGE_CONNECTIONS",
-      "mcp__rube__RUBE_WAIT_FOR_CONNECTION"
+      "mcp__rube__RUBE_WAIT_FOR_CONNECTION",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(mkdir:*)",
+      "Read(I:\\claudecode\\epic-student-attendance-system/**)",
+      "Read(I:\\claudecode\\epic-student-attendance-system/**)",
+      "Read(I:\\claudecode\\epic-student-attendance-system/**)",
+      "Read(I:\\claudecode\\epic-student-attendance-system/**)",
+      "Read(I:\\claudecode\\epic-student-attendance-system/**)",
+      "Read(I:\\claudecode\\epic-student-attendance-system/**)",
+      "Read(I:\\claudecode\\epic-student-attendance-system/**)"
     ]
   }
 }
