@@ -1,0 +1,393 @@
+/* Share Link Manager Component Styles */
+.share-link-manager {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.share-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.share-header h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: #1a1a1a;
+}
+
+.share-header p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Loading and Error States */
+.loading-state,
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: #666;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-state {
+  color: #dc3545;
+}
+
+.error-icon {
+  font-size: 1.5rem;
+}
+
+/* Share Items */
+.share-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.share-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.share-icon {
+  font-size: 1.25rem;
+}
+
+.share-title {
+  flex: 1;
+  font-weight: 600;
+  color: #333;
+}
+
+.copy-button {
+  background: none;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.copy-button:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.link-preview {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.85rem;
+  color: #495057;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.link-description {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Quick Share Section */
+.quick-share {
+  margin: 2rem 0;
+}
+
+.quick-share h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.share-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.share-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0.75rem;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+  min-height: 80px;
+  justify-content: center;
+}
+
+.share-button:hover {
+  border-color: #007bff;
+  background: #f8f9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.15);
+}
+
+.share-button-icon {
+  font-size: 1.5rem;
+}
+
+.share-button-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Session Info */
+.session-info {
+  background: #e8f4fd;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.info-item:not(:last-child) {
+  border-bottom: 1px solid rgba(0, 123, 255, 0.1);
+}
+
+.info-item strong {
+  color: #0c5aa6;
+}
+
+/* Usage Tips */
+.usage-tips {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+}
+
+.usage-tips h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  color: #495057;
+}
+
+.usage-tips ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.usage-tips li {
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.usage-tips strong {
+  color: #495057;
+}
+
+/* Accessibility Note */
+.accessibility-note {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.accessibility-note p {
+  margin: 0;
+  color: #856404;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .share-link-manager {
+    margin: 0 -1rem 1rem;
+    border-radius: 0;
+    padding: 1rem;
+  }
+
+  .share-item-header {
+    flex-wrap: wrap;
+  }
+
+  .copy-button {
+    order: 3;
+    margin-top: 0.5rem;
+  }
+
+  .share-buttons {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .share-button {
+    min-height: 70px;
+    padding: 0.75rem 0.5rem;
+  }
+
+  .share-button-icon {
+    font-size: 1.25rem;
+  }
+
+  .share-button-text {
+    font-size: 0.8rem;
+  }
+
+  .info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .share-button {
+    border-width: 3px;
+  }
+
+  .share-button:hover {
+    border-color: #000080;
+  }
+
+  .link-preview {
+    border-width: 2px;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .share-button {
+    transition: none;
+  }
+
+  .share-button:hover {
+    transform: none;
+  }
+
+  .spinner {
+    animation: none;
+  }
+}
+
+/* Focus Styles */
+.copy-button:focus-visible,
+.share-button:focus-visible {
+  outline: 3px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .share-link-manager {
+    background: #1a1a1a;
+    color: white;
+  }
+
+  .share-header h3 {
+    color: white;
+  }
+
+  .share-item {
+    background: #2a2a2a;
+  }
+
+  .link-preview {
+    background: #1a1a1a;
+    border-color: #404040;
+    color: #e5e5e5;
+  }
+
+  .share-button {
+    background: #2a2a2a;
+    border-color: #404040;
+    color: #e5e5e5;
+  }
+
+  .share-button:hover {
+    background: #3a3a3a;
+    border-color: #4dabf7;
+  }
+
+  .share-button-text {
+    color: #e5e5e5;
+  }
+
+  .session-info {
+    background: #2a4a5c;
+  }
+
+  .info-item strong {
+    color: #74c0fc;
+  }
+
+  .usage-tips {
+    background: #2a2a2a;
+  }
+
+  .usage-tips h4,
+  .usage-tips strong {
+    color: #e5e5e5;
+  }
+
+  .copy-button {
+    background: #2a2a2a;
+    border-color: #404040;
+    color: #e5e5e5;
+  }
+
+  .copy-button:hover {
+    background: #3a3a3a;
+  }
+
+  .accessibility-note {
+    background: #3d3d00;
+    border-color: #6d6d00;
+  }
+
+  .accessibility-note p {
+    color: #fff3cd;
+  }
+}

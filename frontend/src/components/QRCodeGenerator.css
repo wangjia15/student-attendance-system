@@ -1,0 +1,366 @@
+/* QR Code Generator Component Styles */
+.qr-code-generator {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.qr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.qr-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1a1a1a;
+}
+
+.time-remaining {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.85rem;
+}
+
+.time-remaining .label {
+  color: #666;
+  margin-bottom: 0.25rem;
+}
+
+.time-remaining .time {
+  font-weight: 600;
+  color: #007bff;
+  font-size: 1rem;
+}
+
+.time-remaining .time.expired {
+  color: #dc3545;
+}
+
+/* QR Code Container */
+.qr-code-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.qr-code-image {
+  position: relative;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  transition: transform 0.2s ease;
+}
+
+.qr-code-image:hover {
+  transform: scale(1.05);
+}
+
+.qr-image {
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
+  border: 2px solid #e5e5e5;
+  background: white;
+}
+
+.qr-overlay {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.qr-code-image:hover .qr-overlay {
+  opacity: 1;
+}
+
+/* Class Info */
+.class-info {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.class-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.25rem;
+}
+
+.subject {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.session-id {
+  font-size: 0.8rem;
+  color: #999;
+  font-family: monospace;
+}
+
+/* Loading State */
+.qr-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error Message */
+.error-message {
+  background: #fee;
+  color: #c33;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  border: 1px solid #fcc;
+}
+
+/* Action Buttons */
+.qr-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.action-button {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+  min-height: 44px;
+}
+
+.action-button.primary {
+  background: #007bff;
+  color: white;
+}
+
+.action-button.primary:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.action-button.secondary {
+  background: #f8f9fa;
+  color: #495057;
+  border: 1px solid #dee2e6;
+}
+
+.action-button.secondary:hover:not(:disabled) {
+  background: #e9ecef;
+}
+
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Scan Instructions */
+.scan-instructions {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.scan-instructions p {
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+  color: #495057;
+}
+
+.scan-instructions ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #666;
+}
+
+.scan-instructions li {
+  margin-bottom: 0.25rem;
+}
+
+/* Full Screen Modal */
+.fullscreen-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.fullscreen-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 90vw;
+  max-height: 90vh;
+  position: relative;
+}
+
+.close-button {
+  position: absolute;
+  top: -50px;
+  right: -20px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fullscreen-qr {
+  max-width: 80vmin;
+  max-height: 80vmin;
+  width: auto;
+  height: auto;
+  border-radius: 16px;
+  margin-bottom: 1rem;
+}
+
+.fullscreen-info {
+  text-align: center;
+  color: white;
+}
+
+.fullscreen-info h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+}
+
+.fullscreen-info p {
+  margin: 0.5rem 0 0 0;
+  opacity: 0.9;
+  font-size: 1rem;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .qr-code-generator {
+    margin: 0 -1rem 1rem;
+    border-radius: 0;
+    padding: 1rem;
+  }
+  
+  .qr-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .qr-image {
+    width: 160px;
+    height: 160px;
+  }
+  
+  .qr-actions {
+    flex-direction: column;
+  }
+  
+  .fullscreen-modal {
+    padding: 0.5rem;
+  }
+  
+  .close-button {
+    top: 1rem;
+    right: 1rem;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .qr-image {
+    border-color: #000;
+    border-width: 3px;
+  }
+  
+  .action-button.secondary {
+    border-color: #000;
+    border-width: 2px;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .qr-code-generator {
+    background: #1a1a1a;
+    color: white;
+  }
+  
+  .qr-header h3,
+  .class-name {
+    color: white;
+  }
+  
+  .scan-instructions {
+    background: #2a2a2a;
+    color: #e5e5e5;
+  }
+  
+  .scan-instructions p {
+    color: #e5e5e5;
+  }
+  
+  .action-button.secondary {
+    background: #2a2a2a;
+    color: #e5e5e5;
+    border-color: #404040;
+  }
+  
+  .action-button.secondary:hover:not(:disabled) {
+    background: #3a3a3a;
+  }
+}
