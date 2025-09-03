@@ -28,7 +28,10 @@
       "List(**)",
       "WebFetch(domain:github.com)",
       "WebSearch",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "mcp__rube__RUBE_SEARCH_TOOLS",
+      "mcp__rube__RUBE_MANAGE_CONNECTIONS",
+      "mcp__rube__RUBE_WAIT_FOR_CONNECTION"
     ]
   }
 }
