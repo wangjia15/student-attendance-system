@@ -40,7 +40,30 @@
       "Read(I:\\claudecode\\epic-student-attendance-system/**)",
       "Read(I:\\claudecode\\epic-student-attendance-system/**)",
       "Read(I:\\claudecode\\epic-student-attendance-system/**)",
-      "Read(I:\\claudecode\\epic-student-attendance-system/**)"
+      "Read(I:\\claudecode\\epic-student-attendance-system/**)",
+      "Bash(alembic init:*)",
+      "Bash(alembic revision:*)",
+      "Bash(pip install:*)",
+      "Bash(curl:*)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\.claude\\epics\\archived\\student-attendance-system\\updates\\6/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\.claude\\epics\\archived\\student-attendance-system/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\.claude\\epics\\archived\\student-attendance-system\\updates\\6/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend\\app\\services/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend\\app\\models/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend\\app\\schemas/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend\\app\\models/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend\\app\\models/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend\\app\\models/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend\\app\\core/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend/**)",
+      "Read(/I:\\claudecode\\Student-Attendance-System\\backend/**)"
     ]
   }
 }

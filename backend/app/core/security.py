@@ -4,7 +4,7 @@ JWT token generation and security utilities for class sessions.
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
-import jwt
+from jose import jwt
 from fastapi import HTTPException, status
 
 
@@ -93,3 +93,32 @@ class VerificationCodeManager:
 # Global instances
 jwt_manager = JWTManager()
 verification_code_manager = VerificationCodeManager()
+
+
+# Convenience functions for easier importing
+def create_class_token(data: Dict[str, Any]) -> str:
+    """Create a JWT token for class session."""
+    from app.core.config import settings
+    import secrets
+    
+    # Add required fields
+    token_data = data.copy()
+    token_data.update({
+        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
+        "type": "class_session",
+        "jti": secrets.token_urlsafe(16)
+    })
+    
+    return jwt.encode(token_data, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def create_verification_code() -> str:
+    """Generate a 6-digit verification code."""
+    return f"{secrets.randbelow(999999):06d}"
+
+
+def verify_verification_code(code: str) -> bool:
+    """Verify a verification code (placeholder implementation)."""
+    # In a real implementation, this would check against stored codes
+    return len(code) == 6 and code.isdigit()

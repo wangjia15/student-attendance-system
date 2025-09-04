@@ -29,11 +29,14 @@ export const ClassCreationForm: React.FC<ClassCreationFormProps> = ({
   onCancel
 }) => {
   const [formData, setFormData] = useState<ClassSessionCreate>({
-    class_name: '',
+    name: '',
+    description: '',
     subject: '',
-    expiration_minutes: 30,
-    max_students: undefined,
-    allow_late_join: true
+    location: '',
+    duration_minutes: 30,
+    allow_late_join: true,
+    require_verification: true,
+    auto_end_minutes: 120
   });
   
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
@@ -48,9 +51,9 @@ export const ClassCreationForm: React.FC<ClassCreationFormProps> = ({
         const parsed = JSON.parse(savedFormData);
         setFormData(prev => ({
           ...prev,
-          class_name: parsed.class_name || '',
+          name: parsed.name || '',
           subject: parsed.subject || '',
-          max_students: parsed.max_students
+          location: parsed.location || ''
         }));
       } catch (e) {
         // Ignore parsing errors
@@ -64,10 +67,10 @@ export const ClassCreationForm: React.FC<ClassCreationFormProps> = ({
       setSelectedTemplate(templateId);
       setFormData(prev => ({
         ...prev,
-        class_name: template.name,
+        name: template.name,
         subject: template.subject,
-        expiration_minutes: template.defaultDuration,
-        max_students: template.maxStudents
+        duration_minutes: template.defaultDuration,
+        auto_end_minutes: template.defaultDuration + 30
       }));
     }
   };
@@ -90,7 +93,7 @@ export const ClassCreationForm: React.FC<ClassCreationFormProps> = ({
 
     try {
       // Validate form
-      if (!formData.class_name.trim()) {
+      if (!formData.name.trim()) {
         throw new Error('Class name is required');
       }
 
@@ -142,11 +145,24 @@ export const ClassCreationForm: React.FC<ClassCreationFormProps> = ({
           <input
             id="className"
             type="text"
-            value={formData.class_name}
-            onChange={(e) => handleInputChange('class_name', e.target.value)}
+            value={formData.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
             placeholder="Enter class name"
             maxLength={100}
             required
+          />
+        </div>
+        
+        {/* Description */}
+        <div className="form-group">
+          <label htmlFor="description">Description</label>
+          <textarea
+            id="description"
+            value={formData.description || ''}
+            onChange={(e) => handleInputChange('description', e.target.value)}
+            placeholder="Enter class description (optional)"
+            maxLength={500}
+            rows={2}
           />
         </div>
 
@@ -162,6 +178,19 @@ export const ClassCreationForm: React.FC<ClassCreationFormProps> = ({
             maxLength={50}
           />
         </div>
+        
+        {/* Location */}
+        <div className="form-group">
+          <label htmlFor="location">Location</label>
+          <input
+            id="location"
+            type="text"
+            value={formData.location || ''}
+            onChange={(e) => handleInputChange('location', e.target.value)}
+            placeholder="Enter location (optional)"
+            maxLength={100}
+          />
+        </div>
 
         {/* Duration */}
         <div className="form-group">
@@ -172,27 +201,40 @@ export const ClassCreationForm: React.FC<ClassCreationFormProps> = ({
               type="range"
               min="5"
               max="180"
-              value={formData.expiration_minutes}
-              onChange={(e) => handleInputChange('expiration_minutes', parseInt(e.target.value))}
+              value={formData.duration_minutes || 30}
+              onChange={(e) => handleInputChange('duration_minutes', parseInt(e.target.value))}
             />
-            <span className="duration-display">{formData.expiration_minutes} minutes</span>
+            <span className="duration-display">{formData.duration_minutes || 30} minutes</span>
+          </div>
+        </div>
+        
+        {/* Auto End Duration */}
+        <div className="form-group">
+          <label htmlFor="autoEnd">Auto-end After</label>
+          <div className="duration-control">
+            <input
+              id="autoEnd"
+              type="range"
+              min="30"
+              max="480"
+              value={formData.auto_end_minutes}
+              onChange={(e) => handleInputChange('auto_end_minutes', parseInt(e.target.value))}
+            />
+            <span className="duration-display">{formData.auto_end_minutes} minutes</span>
           </div>
         </div>
 
-        {/* Max Students */}
-        <div className="form-group">
-          <label htmlFor="maxStudents">Maximum Students (optional)</label>
-          <input
-            id="maxStudents"
-            type="number"
-            value={formData.max_students || ''}
-            onChange={(e) => handleInputChange('max_students', 
-              e.target.value ? parseInt(e.target.value) : undefined
-            )}
-            placeholder="No limit"
-            min="1"
-            max="500"
-          />
+        {/* Require Verification */}
+        <div className="form-group checkbox-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={formData.require_verification}
+              onChange={(e) => handleInputChange('require_verification', e.target.checked)}
+            />
+            <span className="checkmark"></span>
+            Require verification code entry
+          </label>
         </div>
 
         {/* Allow Late Join */}
@@ -230,7 +272,7 @@ export const ClassCreationForm: React.FC<ClassCreationFormProps> = ({
           <button
             type="submit"
             className="create-button"
-            disabled={isCreating || !formData.class_name.trim()}
+            disabled={isCreating || !formData.name.trim()}
           >
             {isCreating ? 'Creating...' : 'Create Class Session'}
           </button>

@@ -3,14 +3,34 @@
 import {
   ClassSessionCreate,
   ClassSessionResponse,
-  QRCodeRegenerateResponse,
-  VerificationCodeRegenerateResponse,
+  QRCodeResponse,
   ShareLinkResponse,
-  LiveSessionStats,
+  LoginRequest,
+  RegisterRequest,
+  Token,
+  UserResponse,
+  StudentJoinRequest,
+  VerificationCodeJoinRequest,
+  StudentJoinResponse,
+  AttendanceResponse,
   APIError
 } from '../types/api';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+// Authentication token management
+let authToken: string | null = localStorage.getItem('access_token');
+
+export const setAuthToken = (token: string | null) => {
+  authToken = token;
+  if (token) {
+    localStorage.setItem('access_token', token);
+  } else {
+    localStorage.removeItem('access_token');
+  }
+};
+
+export const getAuthToken = () => authToken;
 
 class APIService {
   private baseURL: string;
@@ -21,18 +41,26 @@ class APIService {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    requireAuth: boolean = true
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     
-    const defaultHeaders = {
+    const defaultHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
     };
+
+    // Add authentication header if required and token exists
+    if (requireAuth && authToken) {
+      defaultHeaders.Authorization = `Bearer ${authToken}`;
+    }
 
     const config: RequestInit = {
       ...options,
-      headers: defaultHeaders,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
     };
 
     try {
@@ -60,6 +88,28 @@ class APIService {
     }
   }
 
+  // Authentication methods
+  async login(credentials: LoginRequest): Promise<Token> {
+    const token = await this.request<Token>('/api/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }, false);
+    
+    setAuthToken(token.access_token);
+    return token;
+  }
+  
+  async register(userData: RegisterRequest): Promise<UserResponse> {
+    return this.request<UserResponse>('/api/v1/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    }, false);
+  }
+  
+  async logout(): Promise<void> {
+    setAuthToken(null);
+  }
+
   // Class Session Management
   async createClassSession(sessionData: ClassSessionCreate): Promise<ClassSessionResponse> {
     return this.request<ClassSessionResponse>('/api/v1/classes/create', {
@@ -68,55 +118,78 @@ class APIService {
     });
   }
 
-  async getClassSession(classId: string): Promise<ClassSessionResponse> {
-    return this.request<ClassSessionResponse>(`/api/v1/classes/${classId}`);
+  async getClassSessions(statusFilter?: string, limit = 50, offset = 0): Promise<ClassSessionResponse[]> {
+    const params = new URLSearchParams();
+    if (statusFilter) params.append('status_filter', statusFilter);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    
+    return this.request<ClassSessionResponse[]>(`/api/v1/classes/?${params.toString()}`);
   }
 
-  async updateClassSession(
-    classId: string, 
-    updates: Partial<ClassSessionCreate>
-  ): Promise<ClassSessionResponse> {
-    return this.request<ClassSessionResponse>(`/api/v1/classes/${classId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
+  async getClassSession(sessionId: number): Promise<ClassSessionResponse> {
+    return this.request<ClassSessionResponse>(`/api/v1/classes/${sessionId}`);
+  }
+
+  async updateClassSession(sessionId: number, updateData: Partial<ClassSessionCreate>): Promise<ClassSessionResponse> {
+    return this.request<ClassSessionResponse>(`/api/v1/classes/${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updateData),
     });
   }
 
-  async endClassSession(classId: string): Promise<ClassSessionResponse> {
-    return this.updateClassSession(classId, { status: 'ended' } as any);
+  async endClassSession(sessionId: number): Promise<any> {
+    return this.request(`/api/v1/classes/${sessionId}/end`, {
+      method: 'POST',
+    });
   }
 
   // QR Code Management
-  async regenerateQRCode(classId: string): Promise<QRCodeRegenerateResponse> {
-    return this.request<QRCodeRegenerateResponse>(
-      `/api/v1/classes/${classId}/qr-code/regenerate`,
-      { method: 'POST' }
-    );
-  }
-
-  // Verification Code Management
-  async regenerateVerificationCode(classId: string): Promise<VerificationCodeRegenerateResponse> {
-    return this.request<VerificationCodeRegenerateResponse>(
-      `/api/v1/classes/${classId}/verification-code/regenerate`,
-      { method: 'POST' }
-    );
+  async regenerateQRCode(sessionId: number): Promise<QRCodeResponse> {
+    return this.request<QRCodeResponse>(`/api/v1/classes/${sessionId}/regenerate-qr`, {
+      method: 'POST',
+    });
   }
 
   // Share Link Management
-  async getShareLink(classId: string): Promise<ShareLinkResponse> {
-    return this.request<ShareLinkResponse>(`/api/v1/classes/${classId}/share-link`);
+  async getShareLink(sessionId: number): Promise<ShareLinkResponse> {
+    return this.request<ShareLinkResponse>(`/api/v1/classes/${sessionId}/share-link`);
   }
 
-  // Session Statistics
-  async getSessionStats(classId: string): Promise<LiveSessionStats> {
-    return this.request<LiveSessionStats>(`/api/v1/classes/${classId}/stats`);
+  // Student Attendance Methods
+  async joinClassWithQR(joinData: StudentJoinRequest): Promise<StudentJoinResponse> {
+    return this.request<StudentJoinResponse>('/api/v1/attendance/join/qr', {
+      method: 'POST',
+      body: JSON.stringify(joinData),
+    });
+  }
+
+  async joinClassWithCode(joinData: VerificationCodeJoinRequest): Promise<StudentJoinResponse> {
+    return this.request<StudentJoinResponse>('/api/v1/attendance/join/code', {
+      method: 'POST',
+      body: JSON.stringify(joinData),
+    });
+  }
+
+  async getMyAttendance(limit = 50, offset = 0): Promise<AttendanceResponse[]> {
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    
+    return this.request<AttendanceResponse[]>(`/api/v1/attendance/my-attendance?${params.toString()}`);
+  }
+
+  async checkoutFromClass(sessionId: number): Promise<any> {
+    return this.request(`/api/v1/attendance/checkout/${sessionId}`, {
+      method: 'POST',
+    });
   }
 
   // WebSocket URL for live updates
-  getWebSocketURL(classId: string, token: string): string {
+  getWebSocketURL(classId: number): string {
     const wsProtocol = this.baseURL.startsWith('https') ? 'wss' : 'ws';
     const baseWsURL = this.baseURL.replace(/^https?/, wsProtocol);
-    return `${baseWsURL}/api/v1/classes/${classId}/live-updates?token=${encodeURIComponent(token)}`;
+    return `${baseWsURL}/ws/${classId}`;
   }
 }
 
@@ -124,31 +197,22 @@ class APIService {
 const apiService = new APIService();
 
 // Export individual methods for easier importing
-export const createClassSession = (data: ClassSessionCreate) => 
-  apiService.createClassSession(data);
-
-export const getClassSession = (classId: string) => 
-  apiService.getClassSession(classId);
-
-export const updateClassSession = (classId: string, updates: Partial<ClassSessionCreate>) => 
-  apiService.updateClassSession(classId, updates);
-
-export const endClassSession = (classId: string) => 
-  apiService.endClassSession(classId);
-
-export const regenerateQRCode = (classId: string) => 
-  apiService.regenerateQRCode(classId);
-
-export const regenerateVerificationCode = (classId: string) => 
-  apiService.regenerateVerificationCode(classId);
-
-export const getShareLink = (classId: string) => 
-  apiService.getShareLink(classId);
-
-export const getSessionStats = (classId: string) => 
-  apiService.getSessionStats(classId);
-
-export const getWebSocketURL = (classId: string, token: string) => 
-  apiService.getWebSocketURL(classId, token);
+export const {
+  login,
+  register,
+  logout,
+  createClassSession,
+  getClassSessions,
+  getClassSession,
+  updateClassSession,
+  endClassSession,
+  regenerateQRCode,
+  getShareLink,
+  joinClassWithQR,
+  joinClassWithCode,
+  getMyAttendance,
+  checkoutFromClass,
+  getWebSocketURL
+} = apiService;
 
 export default apiService;

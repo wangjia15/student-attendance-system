@@ -9,7 +9,27 @@ from fastapi import WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel
 
 from ..core.security import jwt_manager
-from ..models.class_session import StudentJoin, LiveSessionStats
+# Remove non-existent imports - we'll define these as Pydantic models below
+
+
+class StudentJoin(BaseModel):
+    """Model for student join events."""
+    student_id: int
+    student_name: str
+    class_id: str
+    joined_at: datetime
+    join_method: str  # "qr" or "code"
+
+
+class LiveSessionStats(BaseModel):
+    """Model for live session statistics."""
+    class_id: str
+    class_name: str
+    status: str
+    time_remaining_minutes: int
+    total_joins: int
+    unique_students: int
+    recent_joins: List[str]
 
 
 class ConnectionManager:
@@ -273,3 +293,35 @@ class LiveUpdateService:
 # Global instances
 connection_manager = ConnectionManager()
 live_update_service = LiveUpdateService(connection_manager)
+
+
+class WebSocketManager:
+    """Main WebSocket manager for FastAPI integration."""
+    
+    def __init__(self):
+        self.connection_manager = connection_manager
+        self.live_service = live_update_service
+    
+    async def websocket_endpoint(self, websocket: WebSocket, class_id: str, token: str = None):
+        """
+        FastAPI WebSocket endpoint handler.
+        
+        Args:
+            websocket: WebSocket connection
+            class_id: Class session ID
+            token: JWT token for authentication (from query params)
+        """
+        if not token:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+        
+        # Attempt connection with authentication
+        connected = await self.connection_manager.connect(websocket, class_id, token)
+        
+        if connected:
+            # Handle incoming messages
+            await self.live_service.handle_websocket_messages(websocket, class_id)
+
+
+# Export manager instance for main.py
+manager = WebSocketManager()
