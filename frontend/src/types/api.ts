@@ -118,6 +118,8 @@ export interface StudentJoinResponse {
   class_name: string;
   join_time: string;
   attendance_status: AttendanceStatus;
+  is_late?: boolean;
+  late_minutes?: number;
 }
 
 export interface AttendanceResponse {
@@ -130,6 +132,10 @@ export interface AttendanceResponse {
   check_in_time: string;
   check_out_time?: string;
   verification_method?: string;
+  is_late?: boolean;
+  late_minutes?: number;
+  is_manual_override?: boolean;
+  override_reason?: string;
 }
 
 // WebSocket Types (updated for new backend)
