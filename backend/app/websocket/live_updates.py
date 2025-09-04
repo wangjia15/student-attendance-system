@@ -1,15 +1,18 @@
 """
 WebSocket handler for real-time class session updates.
+Legacy compatibility layer for existing WebSocket connections.
 """
 import json
 import asyncio
+import secrets
 from datetime import datetime, timezone
 from typing import Dict, List, Set
 from fastapi import WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel
 
 from ..core.security import jwt_manager
-# Remove non-existent imports - we'll define these as Pydantic models below
+from ..core.websocket import websocket_server, MessageType
+from .event_handlers import attendance_event_handler, StudentJoinEvent
 
 
 class StudentJoin(BaseModel):
@@ -296,7 +299,7 @@ live_update_service = LiveUpdateService(connection_manager)
 
 
 class WebSocketManager:
-    """Main WebSocket manager for FastAPI integration."""
+    """Main WebSocket manager for FastAPI integration - Legacy compatibility layer."""
     
     def __init__(self):
         self.connection_manager = connection_manager
@@ -304,7 +307,8 @@ class WebSocketManager:
     
     async def websocket_endpoint(self, websocket: WebSocket, class_id: str, token: str = None):
         """
-        FastAPI WebSocket endpoint handler.
+        Legacy FastAPI WebSocket endpoint handler.
+        This bridges to the new WebSocket infrastructure while maintaining compatibility.
         
         Args:
             websocket: WebSocket connection
@@ -315,12 +319,38 @@ class WebSocketManager:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
         
-        # Attempt connection with authentication
-        connected = await self.connection_manager.connect(websocket, class_id, token)
+        # Generate connection ID for new infrastructure
+        connection_id = f"legacy_{class_id}_{secrets.token_urlsafe(8)}"
         
-        if connected:
-            # Handle incoming messages
-            await self.live_service.handle_websocket_messages(websocket, class_id)
+        try:
+            # Use new WebSocket infrastructure
+            success = await websocket_server.connect(websocket, connection_id)
+            
+            if success:
+                # Send authentication message through new infrastructure
+                auth_message = json.dumps({
+                    "type": "auth",
+                    "data": {
+                        "token": token,
+                        "class_id": class_id
+                    }
+                })
+                
+                await websocket_server.handle_message(connection_id, auth_message)
+                
+                # Handle incoming messages through new infrastructure
+                try:
+                    while True:
+                        data = await websocket.receive_text()
+                        await websocket_server.handle_message(connection_id, data)
+                except WebSocketDisconnect:
+                    await websocket_server.disconnect(connection_id)
+            else:
+                await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
+                
+        except Exception as e:
+            await websocket_server.disconnect(connection_id)
+            raise
 
 
 # Export manager instance for main.py
