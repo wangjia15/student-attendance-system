@@ -42,3 +42,12 @@ psutil==5.9.6
 
 # Message compression and optimization
 orjson==3.9.10
+
+# Push notifications
+firebase-admin==6.4.0
+pywebpush==1.14.0
+cryptography==41.0.7
+
+# Background task processing
+celery[redis]==5.3.4
+flower==2.0.1

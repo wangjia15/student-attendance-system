@@ -41,6 +41,20 @@ class Settings(BaseSettings):
     QR_CODE_SIZE: int = 10
     QR_CODE_BORDER: int = 4
     
+    # Push Notification settings
+    # Firebase Cloud Messaging (FCM)
+    FCM_SERVICE_ACCOUNT_PATH: str = ""
+    
+    # Web Push (VAPID)
+    WEB_PUSH_VAPID_PUBLIC_KEY: str = ""
+    WEB_PUSH_VAPID_PRIVATE_KEY: str = ""
+    WEB_PUSH_VAPID_SUBJECT: str = "mailto:admin@attendance.school.edu"
+    
+    # Notification settings
+    NOTIFICATION_BATCH_INTERVAL_MINUTES: int = 30
+    NOTIFICATION_MAX_BATCH_SIZE: int = 5
+    NOTIFICATION_CLEANUP_DAYS: int = 30
+    
     @validator("ALLOWED_ORIGINS", pre=True)
     def parse_origins(cls, v):
         if isinstance(v, str):

@@ -1,0 +1,370 @@
+/* Mobile-Optimized Class Creation Styles */
+.mobile-class-creation {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Network Status */
+.network-status {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: white;
+  background: #28a745;
+  transition: all 0.3s ease;
+}
+
+.network-status.offline {
+  background: #dc3545;
+  animation: pulse 2s infinite;
+}
+
+.status-icon {
+  font-size: 1rem;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* Main Content */
+.creation-content {
+  flex: 1;
+  padding-top: 0;
+  position: relative;
+}
+
+/* Adjust content when network status is shown */
+.mobile-class-creation:has(.network-status) .creation-content {
+  padding-top: 3rem;
+}
+
+/* Quick Access Panel */
+.quick-access-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+  padding: 2rem 1.5rem 1.5rem;
+  z-index: 999;
+  animation: slideUpFromBottom 0.3s ease-out;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+@keyframes slideUpFromBottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.quick-access-content h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: center;
+}
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.quick-action {
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.quick-action.primary {
+  background: #007bff;
+  color: white;
+}
+
+.quick-action.primary:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.quick-action.secondary {
+  background: #f8f9fa;
+  color: #495057;
+  border: 2px solid #e9ecef;
+}
+
+.quick-action.secondary:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+/* Swipe Gesture Indicator */
+.swipe-indicator {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.swipe-hint {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  animation: fadeInOut 3s infinite;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.3; }
+}
+
+/* Device Status */
+.device-status {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 100;
+  opacity: 0.6;
+}
+
+.ios-optimizations,
+.android-optimizations {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ios-optimizations {
+  background: rgba(0, 122, 255, 0.8);
+}
+
+.android-optimizations {
+  background: rgba(76, 175, 80, 0.8);
+}
+
+/* Orientation-specific styles */
+.mobile-class-creation.landscape {
+  flex-direction: row;
+}
+
+.mobile-class-creation.landscape .creation-content {
+  flex: 1;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Mobile-specific optimizations */
+.mobile-class-creation.mobile .creation-content {
+  padding: 0.5rem;
+}
+
+.mobile-class-creation.mobile .quick-access-panel {
+  border-radius: 20px 20px 0 0;
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .creation-content {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  
+  .quick-access-panel {
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 400px;
+    border-radius: 16px;
+    bottom: 2rem;
+  }
+  
+  .swipe-indicator,
+  .device-status {
+    display: none;
+  }
+}
+
+/* Large mobile screens */
+@media (min-width: 480px) and (max-width: 767px) {
+  .quick-actions {
+    flex-direction: row;
+    gap: 0.75rem;
+  }
+  
+  .quick-action {
+    flex: 1;
+  }
+}
+
+/* Small mobile screens */
+@media (max-width: 479px) {
+  .mobile-class-creation {
+    font-size: 0.9rem;
+  }
+  
+  .quick-access-content h3 {
+    font-size: 1.1rem;
+  }
+  
+  .quick-action {
+    padding: 0.875rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Landscape mobile */
+@media (max-height: 600px) and (orientation: landscape) {
+  .quick-access-panel {
+    position: relative;
+    max-height: none;
+    border-radius: 0;
+    animation: none;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+    padding: 1rem 1.5rem;
+  }
+  
+  .quick-actions {
+    flex-direction: row;
+  }
+  
+  .swipe-indicator,
+  .device-status {
+    display: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .network-status.offline {
+    background: #cc0000;
+    border-bottom: 3px solid #ff0000;
+  }
+  
+  .quick-access-panel {
+    border: 2px solid #000;
+  }
+  
+  .quick-action.secondary {
+    border-color: #000;
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .network-status,
+  .quick-access-panel,
+  .swipe-hint {
+    animation: none;
+  }
+  
+  .quick-action:hover {
+    transform: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .mobile-class-creation {
+    background: #1a1a1a;
+    color: white;
+  }
+  
+  .quick-access-panel {
+    background: #2a2a2a;
+    color: white;
+  }
+  
+  .quick-access-content h3 {
+    color: white;
+  }
+  
+  .quick-action.secondary {
+    background: #3a3a3a;
+    color: #e9ecef;
+    border-color: #555;
+  }
+  
+  .quick-action.secondary:hover {
+    background: #4a4a4a;
+    border-color: #666;
+  }
+}
+
+/* Focus management for accessibility */
+.mobile-class-creation *:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+.quick-action:focus {
+  outline: 3px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Safe area adjustments for notched devices */
+@supports (padding: max(0px)) {
+  .network-status {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  .quick-access-panel {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+  
+  .swipe-indicator {
+    top: max(1rem, env(safe-area-inset-top));
+    right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  .device-status {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    left: max(1rem, env(safe-area-inset-left));
+  }
+}

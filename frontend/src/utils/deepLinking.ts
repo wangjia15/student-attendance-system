@@ -370,19 +370,24 @@ export const createClassCreationLink = (template?: string) => {
   });
 };
 
-// Hook for React components
+// Hook for React components (to be imported in React components)
+// Usage: import React from 'react'; then use this hook
 export const useDeepLink = (callback: (data: DeepLinkData) => void) => {
-  const [isListening, setIsListening] = React.useState(false);
+  // This will be used in React components where React is imported
+  // const [isListening, setIsListening] = React.useState(false);
   
-  React.useEffect(() => {
-    const unsubscribe = deepLinkHandler.onDeepLink(callback);
-    setIsListening(true);
+  // React.useEffect(() => {
+  //   const unsubscribe = deepLinkHandler.onDeepLink(callback);
+  //   setIsListening(true);
     
-    return () => {
-      unsubscribe();
-      setIsListening(false);
-    };
-  }, [callback]);
+  //   return () => {
+  //     unsubscribe();
+  //     setIsListening(false);
+  //   };
+  // }, [callback]);
   
-  return { isListening };
+  // return { isListening };
+  
+  // For now, just return the unsubscribe function
+  return deepLinkHandler.onDeepLink(callback);
 };
