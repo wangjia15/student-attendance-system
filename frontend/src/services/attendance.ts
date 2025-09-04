@@ -153,7 +153,7 @@ class AttendanceService {
   }
 
   // Teacher Override Methods (for completeness, though Stream C focuses on student interface)
-  async teacherOverrideAttendance(
+  async overrideAttendance(
     classId: number, 
     override: TeacherOverrideRequest
   ): Promise<{ success: boolean; message: string }> {
@@ -299,7 +299,7 @@ export const {
   getClassAttendanceReport,
   analyzeAttendancePatterns,
   getAttendanceAuditTrail,
-  teacherOverrideAttendance,
+  overrideAttendance,
   bulkAttendanceOperation,
   validateCheckIn,
   checkConnectivity,
