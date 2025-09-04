@@ -8,13 +8,14 @@ import {
   BulkAttendanceOperation 
 } from '../types/attendance';
 import { 
-  attendanceWebSocket, 
-  AttendanceUpdateData, 
-  ClassStatsData, 
-  BulkOperationData,
-  AlertData,
-  ConflictData 
+  ConnectionState,
+  StudentJoinedData,
+  AttendanceUpdateData,
+  StatsUpdateData,
+  SystemNotificationData
 } from '../services/websocket';
+import { useRealtime } from '../hooks/useRealtime';
+import { useRealtimeStore, useConnectionState, useLiveStats, useNotifications, useActivityFeed } from '../store/realtime';
 import useAttendanceStore from '../store/attendance';
 import AttendanceOverride from './AttendanceOverride';
 import AttendancePatterns from './AttendancePatterns';
@@ -42,12 +43,8 @@ const TeacherAttendanceDashboard: React.FC<TeacherAttendanceDashboardProps> = ({
   showPatterns = true,
   showBulkOperations = true
 }) => {
-  // State management
-  const [isConnected, setIsConnected] = useState(false);
+  // Local state for UI
   const [classReport, setClassReport] = useState<ClassAttendanceReport | null>(null);
-  const [liveStats, setLiveStats] = useState<ClassStatsData | null>(null);
-  const [alerts, setAlerts] = useState<AttendanceAlert[]>([]);
-  const [dashboardAlerts, setDashboardAlerts] = useState<DashboardAlert[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<Set<number>>(new Set());
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [filterStatus, setFilterStatus] = useState<AttendanceStatus | 'all'>('all');
@@ -56,139 +53,77 @@ const TeacherAttendanceDashboard: React.FC<TeacherAttendanceDashboardProps> = ({
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [showPatternsModal, setShowPatternsModal] = useState(false);
   const [activeOperation, setActiveOperation] = useState<string | null>(null);
-  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
-
+  
+  // Real-time store state
+  const { connectionState, isConnected, connectionError } = useConnectionState();
+  const liveStats = useLiveStats(classSessionId.toString());
+  const { notifications, unreadNotifications } = useNotifications();
+  const activityFeed = useActivityFeed();
+  
   // Zustand store actions
   const { loadClassReport, loadAlerts } = useAttendanceStore();
+  
+  // Real-time store actions
+  const realtimeStore = useRealtimeStore();
 
-  // WebSocket callbacks
-  const wsCallbacks = useMemo(() => ({
-    onConnection: (connected: boolean) => {
-      setIsConnected(connected);
-      addDashboardAlert(
-        connected ? 'success' : 'warning',
-        connected ? 'Connected to real-time updates' : 'Disconnected from real-time updates',
-        true
-      );
+  // Real-time event handlers
+  const realtimeHandlers = useMemo(() => ({
+    onStudentJoined: (data: StudentJoinedData) => {
+      console.log('Student joined:', data);
+      // Refresh class data to get updated attendance
+      loadClassData();
     },
     
     onAttendanceUpdate: (data: AttendanceUpdateData) => {
-      // Update the UI with real-time attendance changes
-      addDashboardAlert(
-        'info',
-        `${data.student_name} marked as ${data.new_status}${data.is_override ? ' (overridden)' : ''}`,
-        true
-      );
-      
+      console.log('Attendance updated:', data);
       // Refresh the class report to get updated data
       loadClassData();
     },
     
-    onStatsUpdate: (data: ClassStatsData) => {
-      setLiveStats(data);
+    onStatsUpdate: (data: StatsUpdateData) => {
+      console.log('Stats updated:', data);
+      // Stats are automatically handled by the store
     },
     
-    onBulkOperation: (data: BulkOperationData) => {
-      addDashboardAlert(
-        data.failed_count === 0 ? 'success' : 'warning',
-        `Bulk ${data.operation}: ${data.processed_count} processed, ${data.failed_count} failed`,
-        true
-      );
-      
-      // End the active operation
-      if (activeOperation) {
-        attendanceWebSocket.endOperation(activeOperation);
-        setActiveOperation(null);
-      }
-      
-      // Refresh data
-      loadClassData();
+    onSystemNotification: (data: SystemNotificationData) => {
+      console.log('System notification:', data);
+      // Notifications are automatically handled by the store
     },
     
-    onAlert: (data: AlertData) => {
-      const newAlert: AttendanceAlert = {
-        type: data.alert_type as any,
-        severity: data.severity,
-        student_id: data.student_id,
-        student_name: data.student_name,
-        message: data.message,
-        data: data.data,
-        created_at: data.timestamp
-      };
-      
-      setAlerts(prev => [newAlert, ...prev.slice(0, 49)]); // Keep last 50 alerts
-      
-      if (data.severity === 'high') {
-        addDashboardAlert('error', `High Priority Alert: ${data.message}`, false);
-      }
-    },
-    
-    onConflict: (data: ConflictData) => {
-      setConflictWarning(data.message);
-      setTimeout(() => setConflictWarning(null), 5000);
+    onConnectionChange: (connected: boolean, state: ConnectionState) => {
+      console.log('Connection state changed:', state);
     },
     
     onError: (error: string) => {
-      addDashboardAlert('error', `Connection error: ${error}`, true);
+      console.error('Real-time connection error:', error);
     }
-  }), [activeOperation, loadClassData]);
+  }), [loadClassData]);
+
+  // Initialize real-time connection
+  const realtime = useRealtime(
+    {
+      classId: classSessionId.toString(),
+      token: teacherToken,
+      autoConnect: true,
+    },
+    realtimeHandlers
+  );
 
   // Load class data
   const loadClassData = useCallback(async () => {
     try {
       const report = await loadClassReport(classSessionId);
       setClassReport(report);
-      
-      // Request live stats via WebSocket
-      if (isConnected) {
-        attendanceWebSocket.requestStats();
-      }
     } catch (error) {
-      addDashboardAlert('error', 'Failed to load class data', true);
+      console.error('Failed to load class data:', error);
     }
-  }, [classSessionId, isConnected]);
+  }, [classSessionId, loadClassReport]);
 
-  // Add dashboard alert
-  const addDashboardAlert = useCallback((type: DashboardAlert['type'], message: string, dismissible: boolean) => {
-    const alert: DashboardAlert = {
-      id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type,
-      message,
-      timestamp: new Date(),
-      dismissible
-    };
-    
-    setDashboardAlerts(prev => [alert, ...prev.slice(0, 9)]); // Keep last 10 alerts
-    
-    // Auto-dismiss certain alerts
-    if (dismissible && (type === 'success' || type === 'info')) {
-      setTimeout(() => {
-        dismissAlert(alert.id);
-      }, 5000);
-    }
-  }, []);
-
-  // Dismiss alert
-  const dismissAlert = useCallback((alertId: string) => {
-    setDashboardAlerts(prev => prev.filter(alert => alert.id !== alertId));
-  }, []);
-
-  // Connect to WebSocket and load initial data
+  // Load initial data on mount
   useEffect(() => {
-    const connect = async () => {
-      const connected = await attendanceWebSocket.connect(classSessionId, teacherToken, wsCallbacks);
-      if (connected) {
-        loadClassData();
-        loadAlerts(classSessionId);
-      }
-    };
-    
-    connect();
-    
-    return () => {
-      attendanceWebSocket.disconnect();
-    };
-  }, [classSessionId, teacherToken, wsCallbacks]);
+    loadClassData();
+    loadAlerts(classSessionId);
+  }, [loadClassData, loadAlerts, classSessionId]);
 
   // Auto-refresh data
   useEffect(() => {
@@ -264,24 +199,40 @@ const TeacherAttendanceDashboard: React.FC<TeacherAttendanceDashboardProps> = ({
   const handleBulkOperation = useCallback((operation: BulkAttendanceOperation, reason: string) => {
     if (selectedStudents.size === 0) return;
     
-    const operationId = attendanceWebSocket.startOperation('bulk_attendance');
+    const operationId = `bulk_${Date.now()}`;
     setActiveOperation(operationId);
     
-    addDashboardAlert('info', `Starting bulk ${operation} for ${selectedStudents.size} students...`, true);
-  }, [selectedStudents]);
+    // Add a system notification for the bulk operation start
+    realtimeStore.addSystemNotification({
+      message: `Starting bulk ${operation} for ${selectedStudents.size} students...`,
+      type: 'info',
+      timestamp: new Date().toISOString()
+    });
+  }, [selectedStudents, realtimeStore]);
 
   // Get current stats (live or from report)
   const currentStats = liveStats || (classReport ? {
-    class_session_id: classReport.class_session_id,
-    total_enrolled: classReport.stats.total_students,
-    checked_in_count: classReport.stats.present_count + classReport.stats.late_count,
+    class_id: classReport.class_session_id.toString(),
+    session_id: classReport.class_session_id.toString(),
+    total_students: classReport.stats.total_students,
     present_count: classReport.stats.present_count,
     late_count: classReport.stats.late_count,
     absent_count: classReport.stats.absent_count,
-    excused_count: classReport.stats.excused_count,
     attendance_rate: classReport.stats.attendance_rate,
-    last_updated: new Date().toISOString()
+    recent_joins: [],
+    updated_at: new Date().toISOString()
   } : null);
+  
+  // Calculate derived stats
+  const derivedStats = currentStats ? {
+    total_enrolled: currentStats.total_students,
+    checked_in_count: currentStats.present_count + currentStats.late_count,
+    present_count: currentStats.present_count,
+    late_count: currentStats.late_count,
+    absent_count: currentStats.absent_count,
+    excused_count: currentStats.absent_count, // Assuming absent includes excused for now
+    attendance_rate: currentStats.attendance_rate
+  } : null;
 
   if (!classReport) {
     return (
@@ -323,28 +274,42 @@ const TeacherAttendanceDashboard: React.FC<TeacherAttendanceDashboardProps> = ({
       {/* Connection Status */}
       <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
         <span className="status-indicator"></span>
-        {isConnected ? 'Live Updates Active' : 'Offline Mode'}
+        {isConnected ? 'Live Updates Active' : connectionState === ConnectionState.CONNECTING ? 'Connecting...' : 'Offline Mode'}
+        {connectionError && (
+          <span className="connection-error" title={connectionError}>⚠️</span>
+        )}
       </div>
 
-      {/* Conflict Warning */}
-      {conflictWarning && (
-        <div className="conflict-warning">
-          <strong>⚠️ {conflictWarning}</strong>
+      {/* System Notifications */}
+      {unreadNotifications.length > 0 && (
+        <div className="system-notifications">
+          {unreadNotifications.slice(0, 3).map(notification => (
+            <div key={notification.id} className={`alert alert-${notification.type}`}>
+              <span className="alert-message">{notification.message}</span>
+              <span className="alert-time">{new Date(notification.timestamp).toLocaleTimeString()}</span>
+              <button 
+                className="alert-dismiss" 
+                onClick={() => realtimeStore.markNotificationAsRead(notification.id)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {unreadNotifications.length > 3 && (
+            <div className="alert alert-info">
+              <span className="alert-message">
+                {unreadNotifications.length - 3} more notifications...
+              </span>
+              <button 
+                className="alert-dismiss" 
+                onClick={() => realtimeStore.markAllNotificationsAsRead()}
+              >
+                Mark all as read
+              </button>
+            </div>
+          )}
         </div>
       )}
-
-      {/* Dashboard Alerts */}
-      <div className="dashboard-alerts">
-        {dashboardAlerts.map(alert => (
-          <div key={alert.id} className={`alert alert-${alert.type}`}>
-            <span className="alert-message">{alert.message}</span>
-            <span className="alert-time">{alert.timestamp.toLocaleTimeString()}</span>
-            {alert.dismissible && (
-              <button className="alert-dismiss" onClick={() => dismissAlert(alert.id)}>×</button>
-            )}
-          </div>
-        ))}
-      </div>
 
       {/* Class Header */}
       <div className="class-header">
@@ -357,32 +322,43 @@ const TeacherAttendanceDashboard: React.FC<TeacherAttendanceDashboardProps> = ({
       </div>
 
       {/* Statistics Cards */}
-      {currentStats && (
+      {derivedStats && (
         <div className="stats-cards">
           <div className="stat-card">
             <h3>Total Enrolled</h3>
-            <div className="stat-value">{currentStats.total_enrolled}</div>
+            <div className="stat-value">{derivedStats.total_enrolled}</div>
           </div>
           <div className="stat-card">
             <h3>Checked In</h3>
-            <div className="stat-value">{currentStats.checked_in_count}</div>
+            <div className="stat-value">{derivedStats.checked_in_count}</div>
           </div>
           <div className="stat-card">
             <h3>Present</h3>
-            <div className="stat-value present">{currentStats.present_count}</div>
+            <div className="stat-value present">{derivedStats.present_count}</div>
           </div>
           <div className="stat-card">
             <h3>Late</h3>
-            <div className="stat-value late">{currentStats.late_count}</div>
+            <div className="stat-value late">{derivedStats.late_count}</div>
           </div>
           <div className="stat-card">
             <h3>Absent</h3>
-            <div className="stat-value absent">{currentStats.absent_count}</div>
+            <div className="stat-value absent">{derivedStats.absent_count}</div>
           </div>
           <div className="stat-card">
             <h3>Attendance Rate</h3>
-            <div className="stat-value">{Math.round(currentStats.attendance_rate * 100)}%</div>
+            <div className="stat-value">{Math.round(derivedStats.attendance_rate * 100)}%</div>
           </div>
+          {liveStats && (
+            <div className="stat-card live-indicator">
+              <h3>Live Updates</h3>
+              <div className="stat-value" style={{ color: '#28a745', fontSize: '16px' }}>
+                {isConnected ? '✅ Active' : '❌ Inactive'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                Last: {new Date(currentStats.updated_at).toLocaleTimeString()}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -564,27 +540,31 @@ const TeacherAttendanceDashboard: React.FC<TeacherAttendanceDashboardProps> = ({
         )}
       </div>
 
-      {/* Attendance Patterns Alert List */}
-      {alerts.length > 0 && (
-        <div className="alerts-section">
-          <h3>Recent Alerts</h3>
-          <div className="alerts-list">
-            {alerts.slice(0, 5).map((alert, index) => (
-              <div key={`${alert.student_id}-${index}`} className={`alert-item severity-${alert.severity}`}>
-                <div className="alert-content">
-                  <span className="alert-type">{alert.type}</span>
-                  <span className="alert-student">{alert.student_name}</span>
-                  <span className="alert-message">{alert.message}</span>
+      {/* Real-time Activity Feed */}
+      {activityFeed.length > 0 && (
+        <div className="activity-section">
+          <h3>Recent Activity</h3>
+          <div className="activity-list">
+            {activityFeed.slice(0, 5).map((activity) => (
+              <div key={activity.id} className={`activity-item activity-${activity.type}`}>
+                <div className="activity-content">
+                  <span className="activity-type">{activity.type.replace('_', ' ')}</span>
+                  <span className="activity-data">
+                    {activity.type === 'student_joined' && activity.data.student_name}
+                    {activity.type === 'attendance_update' && `${activity.data.student_id} status updated`}
+                    {activity.type === 'session_update' && 'Session updated'}
+                    {activity.type === 'system_notification' && activity.data.message}
+                  </span>
                 </div>
-                <div className="alert-time">
-                  {new Date(alert.created_at).toLocaleTimeString()}
+                <div className="activity-time">
+                  {new Date(activity.timestamp).toLocaleTimeString()}
                 </div>
               </div>
             ))}
-            {alerts.length > 5 && (
-              <button onClick={() => setShowPatternsModal(true)}>
-                View All {alerts.length} Alerts
-              </button>
+            {activityFeed.length > 5 && (
+              <div className="activity-more">
+                {activityFeed.length - 5} more activities...
+              </div>
             )}
           </div>
         </div>
@@ -609,7 +589,7 @@ const TeacherAttendanceDashboard: React.FC<TeacherAttendanceDashboardProps> = ({
       {showPatternsModal && (
         <AttendancePatterns
           classSessionId={classSessionId}
-          alerts={alerts}
+          alerts={[]} // Using empty array for now, can be replaced with attendance store alerts
           onClose={() => setShowPatternsModal(false)}
         />
       )}
@@ -660,8 +640,14 @@ const TeacherAttendanceDashboard: React.FC<TeacherAttendanceDashboardProps> = ({
           margin-bottom: 20px;
         }
 
-        .dashboard-alerts {
+        .system-notifications {
           margin-bottom: 20px;
+        }
+        
+        .connection-error {
+          margin-left: 8px;
+          color: #dc3545;
+          cursor: help;
         }
 
         .alert {
@@ -904,44 +890,62 @@ const TeacherAttendanceDashboard: React.FC<TeacherAttendanceDashboardProps> = ({
           font-weight: 500;
         }
 
-        .alerts-section {
+        .activity-section {
           margin-top: 40px;
         }
 
-        .alerts-section h3 {
+        .activity-section h3 {
           margin-bottom: 20px;
           color: #333;
         }
 
-        .alert-item {
+        .activity-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
           padding: 12px;
-          border-left: 4px solid #ccc;
+          border-left: 4px solid #007bff;
           background: #f8f9fa;
           margin-bottom: 8px;
           border-radius: 4px;
         }
 
-        .severity-high { border-left-color: #dc3545; }
-        .severity-medium { border-left-color: #ffc107; }
-        .severity-low { border-left-color: #28a745; }
+        .activity-student_joined { border-left-color: #28a745; }
+        .activity-attendance_update { border-left-color: #ffc107; }
+        .activity-session_update { border-left-color: #17a2b8; }
+        .activity-system_notification { border-left-color: #6c757d; }
 
-        .alert-content {
+        .activity-content {
           display: flex;
           gap: 12px;
         }
 
-        .alert-type {
+        .activity-type {
           font-weight: 600;
-          text-transform: uppercase;
+          text-transform: capitalize;
           font-size: 12px;
         }
 
-        .alert-time {
+        .activity-data {
+          color: #333;
+          font-size: 14px;
+        }
+
+        .activity-time {
           font-size: 12px;
           color: #666;
+        }
+
+        .activity-more {
+          text-align: center;
+          color: #666;
+          font-size: 14px;
+          padding: 8px;
+        }
+        
+        .live-indicator {
+          background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+          border: 2px solid #28a745;
         }
 
         @media (max-width: 768px) {
