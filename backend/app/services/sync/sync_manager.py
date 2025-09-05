@@ -20,10 +20,15 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy import and_, or_, desc, func
 
 from ...core.database import get_db
-from ...models.attendance import Attendance, AttendanceRecord
+from ...models.attendance import AttendanceRecord
 from ...models.class_session import ClassSession
 from ...models.user import User
-from ...websocket.live_updates import broadcast_attendance_update
+try:
+    from ...websocket.live_updates import broadcast_attendance_update
+except ImportError:
+    # Fallback function if websocket module is not available
+    async def broadcast_attendance_update(data):
+        pass
 from ..attendance_engine import AttendanceEngine
 
 logger = logging.getLogger(__name__)
@@ -221,10 +226,10 @@ class SyncManager:
                 return SyncResult.ERROR
             
             # Check for existing attendance record
-            existing_record = self.db.query(Attendance).filter(
+            existing_record = self.db.query(AttendanceRecord).filter(
                 and_(
-                    Attendance.student_id == student_id,
-                    Attendance.class_session_id == session_id
+                    AttendanceRecord.student_id == student_id,
+                    AttendanceRecord.class_session_id == session_id
                 )
             ).first()
             
@@ -282,10 +287,10 @@ class SyncManager:
                 return SyncResult.ERROR
             
             # Get existing attendance record
-            attendance = self.db.query(Attendance).filter(
+            attendance = self.db.query(AttendanceRecord).filter(
                 and_(
-                    Attendance.student_id == student_id,
-                    Attendance.class_session_id == session_id
+                    AttendanceRecord.student_id == student_id,
+                    AttendanceRecord.class_session_id == session_id
                 )
             ).first()
             
@@ -447,7 +452,7 @@ class SyncManager:
         return operations
     
     async def _detect_attendance_conflict(self, 
-                                        existing: Attendance, 
+                                        existing: AttendanceRecord, 
                                         new_data: Dict[str, Any],
                                         new_timestamp: datetime) -> Optional[Dict[str, Any]]:
         """Detect conflicts in attendance records"""
@@ -486,7 +491,7 @@ class SyncManager:
         return None
     
     async def _detect_status_update_conflict(self,
-                                           attendance: Attendance,
+                                           attendance: AttendanceRecord,
                                            new_data: Dict[str, Any],
                                            new_timestamp: datetime) -> Optional[Dict[str, Any]]:
         """Detect conflicts in status updates"""
@@ -532,10 +537,10 @@ class SyncManager:
         session_id = sync_op.data.get("session_id")
         
         if student_id and session_id:
-            existing = self.db.query(Attendance).filter(
+            existing = self.db.query(AttendanceRecord).filter(
                 and_(
-                    Attendance.student_id == student_id,
-                    Attendance.class_session_id == session_id
+                    AttendanceRecord.student_id == student_id,
+                    AttendanceRecord.class_session_id == session_id
                 )
             ).first()
             
@@ -568,7 +573,7 @@ class SyncManager:
         except Exception as e:
             logger.warning(f"Failed to broadcast sync update: {e}")
     
-    async def _broadcast_status_update(self, attendance: Attendance, old_status: str, new_status: str):
+    async def _broadcast_status_update(self, attendance: AttendanceRecord, old_status: str, new_status: str):
         """Broadcast status update via WebSocket"""
         
         try:

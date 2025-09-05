@@ -3,7 +3,18 @@ Skyward API integration client.
 """
 
 import asyncio
-import aiohttp
+try:
+    import aiohttp
+    AIOHTTP_AVAILABLE = True
+except ImportError:
+    AIOHTTP_AVAILABLE = False
+    class MockAiohttp:
+        class ClientSession:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *args): pass
+            async def get(self, *args, **kwargs): raise NotImplementedError("aiohttp not available")
+            async def post(self, *args, **kwargs): raise NotImplementedError("aiohttp not available")
+    aiohttp = MockAiohttp()
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional

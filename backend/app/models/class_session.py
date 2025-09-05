@@ -6,6 +6,52 @@ import enum
 from app.core.database import Base
 
 
+class Class(Base):
+    """Model for classes/courses."""
+    __tablename__ = "classes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    subject = Column(String(100), nullable=True)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    # SIS integration
+    sis_class_id = Column(String(100), nullable=True, index=True)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    teacher = relationship("User", foreign_keys=[teacher_id])
+
+
+class StudentEnrollment(Base):
+    """Model for student enrollment in classes."""
+    __tablename__ = "student_enrollments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
+    
+    # Enrollment details
+    enrollment_date = Column(DateTime(timezone=True), server_default=func.now())
+    withdrawal_date = Column(DateTime(timezone=True), nullable=True)
+    is_active = Column(Boolean, default=True)
+    
+    # SIS integration
+    sis_enrollment_id = Column(String(100), nullable=True, index=True)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    student = relationship("User", foreign_keys=[student_id])
+    class_ = relationship("Class", foreign_keys=[class_id])
+
+
 class SessionStatus(str, enum.Enum):
     ACTIVE = "active"
     PAUSED = "paused"
@@ -22,8 +68,10 @@ class ClassSession(Base):
     subject = Column(String(100), nullable=True)
     location = Column(String(255), nullable=True)
     
-    # Teacher relationship
+    # Class and teacher relationships
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=True)
     teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    class_ = relationship("Class", foreign_keys=[class_id])
     teacher = relationship("User", back_populates="classes_teaching")
     
     # Session status and tokens

@@ -122,3 +122,17 @@ def verify_verification_code(code: str) -> bool:
     """Verify a verification code (placeholder implementation)."""
     # In a real implementation, this would check against stored codes
     return len(code) == 6 and code.isdigit()
+
+
+def encrypt_data(data: str) -> str:
+    """Encrypt data for secure storage (placeholder implementation)."""
+    # In production, use proper encryption like Fernet
+    # For now, return as-is for testing purposes
+    return data
+
+
+def decrypt_data(encrypted_data: str) -> str:
+    """Decrypt data (placeholder implementation)."""
+    # In production, use proper decryption
+    # For now, return as-is for testing purposes  
+    return encrypted_data

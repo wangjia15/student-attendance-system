@@ -17,19 +17,50 @@ from typing import Dict, List, Set, Optional, Any, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from collections import defaultdict
-import orjson
-import psutil
-from prometheus_client import Counter, Histogram, Gauge
+try:
+    import orjson
+    # Use orjson for better performance
+    json_dumps = lambda x: orjson.dumps(x).decode()
+    json_loads = orjson.loads
+except ImportError:
+    import json
+    # Fallback to standard json
+    json_dumps = json.dumps
+    json_loads = json.loads
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+
+try:
+    from prometheus_client import Counter, Histogram, Gauge
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
 
 from fastapi import WebSocket, WebSocketDisconnect, status
 from ..core.security import jwt_manager
 
 
 # Metrics for monitoring
-WEBSOCKET_CONNECTIONS = Gauge('websocket_connections_total', 'Total WebSocket connections', ['status'])
-WEBSOCKET_MESSAGES = Counter('websocket_messages_total', 'Total WebSocket messages', ['type', 'direction'])
-WEBSOCKET_LATENCY = Histogram('websocket_latency_seconds', 'WebSocket message latency')
-WEBSOCKET_ERRORS = Counter('websocket_errors_total', 'WebSocket errors', ['error_type'])
+if PROMETHEUS_AVAILABLE:
+    WEBSOCKET_CONNECTIONS = Gauge('websocket_connections_total', 'Total WebSocket connections', ['status'])
+    WEBSOCKET_MESSAGES = Counter('websocket_messages_total', 'Total WebSocket messages', ['type', 'direction'])
+    WEBSOCKET_LATENCY = Histogram('websocket_latency_seconds', 'WebSocket message latency')
+    WEBSOCKET_ERRORS = Counter('websocket_errors_total', 'WebSocket errors', ['error_type'])
+else:
+    # Mock metrics when prometheus is not available
+    class MockMetric:
+        def inc(self, *args, **kwargs): pass
+        def labels(self, *args, **kwargs): return self
+        def observe(self, *args, **kwargs): pass
+        def set(self, *args, **kwargs): pass
+    
+    WEBSOCKET_CONNECTIONS = MockMetric()
+    WEBSOCKET_MESSAGES = MockMetric()
+    WEBSOCKET_LATENCY = MockMetric()
+    WEBSOCKET_ERRORS = MockMetric()
 
 logger = logging.getLogger(__name__)
 
@@ -260,7 +291,7 @@ class ConnectionPool:
             'active_connections': len(self._connections),
             'active_classes': len(self._class_connections),
             'active_users': len(self._user_connections),
-            'memory_usage': psutil.Process().memory_info().rss / 1024 / 1024,  # MB
+            'memory_usage': psutil.Process().memory_info().rss / 1024 / 1024 if PSUTIL_AVAILABLE else 0,  # MB
         }
     
     async def shutdown(self):
@@ -460,7 +491,7 @@ class WebSocketServer:
         
         try:
             # Parse message
-            message = orjson.loads(raw_message)
+            message = json_loads(raw_message)
             message_type = MessageType(message.get('type', 'unknown'))
             message_data = message.get('data', {})
             
@@ -551,7 +582,7 @@ class WebSocketServer:
                 await self.connection_pool.remove_connection(conn_info.connection_id)
                 return
             
-            json_data = orjson.dumps(message).decode('utf-8')
+            json_data = json_dumps(message)
             await conn_info.websocket.send_text(json_data)
             
         except Exception as e:
@@ -589,7 +620,7 @@ class WebSocketServer:
             },
             "resources": {
                 "memory_mb": stats['memory_usage'],
-                "cpu_percent": psutil.Process().cpu_percent()
+                "cpu_percent": psutil.Process().cpu_percent() if PSUTIL_AVAILABLE else 0
             },
             "errors": stats['errors']
         }

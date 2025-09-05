@@ -194,7 +194,7 @@ class SISSyncOperation(Base):
     error_details = Column(JSON, nullable=True)
     
     # Metadata
-    metadata = Column(JSON, nullable=True)
+    operation_metadata = Column(JSON, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
