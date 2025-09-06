@@ -1,3 +1,11 @@
+# DEPRECATED: Use `uv sync` instead of pip install -r requirements.txt
+# This file is kept for compatibility only.
+# 
+# To set up the project:
+# 1. Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh
+# 2. Run: uv sync
+# 3. Activate: source .venv/bin/activate (Unix) or .venv\Scripts\activate (Windows)
+#
 # FastAPI and ASGI server
 fastapi==0.104.1
 uvicorn[standard]==0.24.0

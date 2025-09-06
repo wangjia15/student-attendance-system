@@ -1,0 +1,213 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "student-attendance-system"
+version = "1.0.0"
+description = "Mobile-first student attendance tracking system with FastAPI backend"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Student Attendance System Team", email = "noreply@example.com"}
+]
+keywords = ["attendance", "education", "fastapi", "ferpa", "mobile"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Education",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
+]
+
+dependencies = [
+    # FastAPI and ASGI server
+    "fastapi>=0.104.1,<1.0.0",
+    "uvicorn[standard]>=0.24.0,<1.0.0",
+    
+    # Database
+    "sqlalchemy[asyncio]>=2.0.23,<3.0.0",
+    "aiosqlite>=0.19.0,<1.0.0",
+    "alembic>=1.12.1,<2.0.0",
+    
+    # Authentication and security
+    "python-jose[cryptography]>=3.3.0,<4.0.0",
+    "passlib[bcrypt]>=1.7.4,<2.0.0",
+    "python-multipart>=0.0.6,<1.0.0",
+    
+    # Validation and settings
+    "pydantic>=2.5.0,<3.0.0",
+    "pydantic-settings>=2.0.3,<3.0.0",
+    
+    # QR Code generation
+    "qrcode[pil]>=7.4.2,<8.0.0",
+    "pillow>=10.1.0,<11.0.0",
+    
+    # HTTP client for external APIs
+    "httpx>=0.25.2,<1.0.0",
+    
+    # Environment and configuration
+    "python-dotenv>=1.0.0,<2.0.0",
+    
+    # WebSocket and real-time features
+    "redis>=5.0.1,<6.0.0",
+    "aioredis>=2.0.1,<3.0.0",
+    "websockets>=12.0,<13.0",
+    
+    # Performance monitoring and metrics
+    "prometheus-client>=0.19.0,<1.0.0",
+    "psutil>=5.9.6,<6.0.0",
+    
+    # Message compression and optimization
+    "orjson>=3.9.10,<4.0.0",
+    
+    # Push notifications
+    "firebase-admin>=6.4.0,<7.0.0",
+    "pywebpush>=1.14.0,<2.0.0",
+    "cryptography>=41.0.7,<42.0.0",
+    
+    # Background task processing
+    "celery[redis]>=5.3.4,<6.0.0",
+    "flower>=2.0.1,<3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=7.4.3,<8.0.0",
+    "pytest-asyncio>=0.21.1,<1.0.0",
+    "pytest-cov>=4.1.0,<5.0.0",
+    
+    # Code quality
+    "black>=23.11.0,<24.0.0",
+    "isort>=5.12.0,<6.0.0",
+    "flake8>=6.1.0,<7.0.0",
+    "mypy>=1.7.0,<2.0.0",
+    
+    # Development tools
+    "pre-commit>=3.5.0,<4.0.0",
+    "ipython>=8.17.0,<9.0.0",
+    "ipdb>=0.13.13,<1.0.0",
+]
+
+test = [
+    "pytest>=7.4.3,<8.0.0",
+    "pytest-asyncio>=0.21.1,<1.0.0",
+    "pytest-cov>=4.1.0,<5.0.0",
+    "httpx>=0.25.2,<1.0.0",
+    "aiohttp>=3.9.0,<4.0.0",
+]
+
+prod = [
+    "gunicorn>=21.2.0,<22.0.0",
+    "psycopg2-binary>=2.9.9,<3.0.0",  # PostgreSQL adapter for production
+]
+
+[project.urls]
+Homepage = "https://github.com/wangjia15/student-attendance-system"
+Repository = "https://github.com/wangjia15/student-attendance-system.git"
+Issues = "https://github.com/wangjia15/student-attendance-system/issues"
+Documentation = "https://github.com/wangjia15/student-attendance-system/blob/main/README.md"
+
+[project.scripts]
+attendance-server = "main:main"
+
+[tool.hatch.version]
+path = "app/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+# Black code formatting
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | migrations
+)/
+'''
+
+# isort import sorting
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+known_first_party = ["app"]
+skip_glob = ["migrations/*"]
+
+# MyPy type checking
+[tool.mypy]
+python_version = "3.11"
+check_untyped_defs = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+exclude = [
+    "migrations/",
+    "tests/",
+    "build/",
+    "dist/",
+]
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "performance: marks tests as performance tests",
+    "security: marks tests as security tests",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/venv/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

@@ -1,3 +1,10 @@
+---
+issue: 8
+stream: External Notification Services
+agent: general-purpose
+status: completed
+---
+
 # Issue #8 Stream D Progress: External Notification Services
 
 ## Status: ✅ COMPLETED

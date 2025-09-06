@@ -1,3 +1,9 @@
+---
+title: GitHub Issue Mapping
+type: mapping
+epic: student-attendance-system
+---
+
 # GitHub Issue Mapping
 
 Epic: #1 - https://github.com/wangjia15/student-attendance-system/issues/1

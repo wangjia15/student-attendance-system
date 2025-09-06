@@ -4,11 +4,14 @@ Legacy compatibility layer for existing WebSocket connections.
 """
 import json
 import asyncio
+import logging
 import secrets
 from datetime import datetime, timezone
 from typing import Dict, List, Set
 from fastapi import WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from ..core.security import jwt_manager
 from ..core.websocket import websocket_server, MessageType
@@ -83,7 +86,8 @@ class ConnectionManager:
             return True
             
         except Exception as e:
-            await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
+            logger.error(f"Authentication failed for connection {class_id}: {e}")
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return False
     
     def disconnect(self, websocket: WebSocket):
@@ -316,6 +320,7 @@ class WebSocketManager:
             token: JWT token for authentication (from query params)
         """
         if not token:
+            logger.warning(f"WebSocket connection rejected: missing token for class {class_id}")
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
         
@@ -344,8 +349,13 @@ class WebSocketManager:
                         data = await websocket.receive_text()
                         await websocket_server.handle_message(connection_id, data)
                 except WebSocketDisconnect:
+                    logger.info(f"WebSocket client disconnected: {connection_id}")
+                    await websocket_server.disconnect(connection_id)
+                except Exception as e:
+                    logger.error(f"WebSocket error for {connection_id}: {e}")
                     await websocket_server.disconnect(connection_id)
             else:
+                logger.error(f"Failed to connect WebSocket {connection_id}")
                 await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                 
         except Exception as e:
