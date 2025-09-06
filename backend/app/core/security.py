@@ -125,14 +125,66 @@ def verify_verification_code(code: str) -> bool:
 
 
 def encrypt_data(data: str) -> str:
-    """Encrypt data for secure storage (placeholder implementation)."""
-    # In production, use proper encryption like Fernet
-    # For now, return as-is for testing purposes
-    return data
+    """Encrypt data for secure storage using Fernet encryption."""
+    from cryptography.fernet import Fernet
+    from app.core.config import settings
+    import base64
+    
+    if not data:
+        return data
+    
+    try:
+        # Get encryption key from settings, or generate one
+        encryption_key = getattr(settings, 'ENCRYPTION_KEY', None)
+        if not encryption_key:
+            # Generate a key for development (not recommended for production)
+            encryption_key = Fernet.generate_key()
+            print("Warning: Using generated encryption key. Set ENCRYPTION_KEY in production!")
+        else:
+            # Ensure key is bytes
+            if isinstance(encryption_key, str):
+                encryption_key = encryption_key.encode()
+        
+        fernet = Fernet(encryption_key)
+        encrypted_bytes = fernet.encrypt(data.encode())
+        return base64.b64encode(encrypted_bytes).decode()
+    except Exception as e:
+        # Log error and return plaintext for development
+        print(f"Encryption error: {e}")
+        return data
 
 
 def decrypt_data(encrypted_data: str) -> str:
-    """Decrypt data (placeholder implementation)."""
-    # In production, use proper decryption
-    # For now, return as-is for testing purposes  
-    return encrypted_data
+    """Decrypt data using Fernet decryption."""
+    from cryptography.fernet import Fernet
+    from app.core.config import settings
+    import base64
+    
+    if not encrypted_data:
+        return encrypted_data
+    
+    try:
+        # Get encryption key from settings
+        encryption_key = getattr(settings, 'ENCRYPTION_KEY', None)
+        if not encryption_key:
+            # For development, assume data is not encrypted
+            return encrypted_data
+        
+        # Ensure key is bytes
+        if isinstance(encryption_key, str):
+            encryption_key = encryption_key.encode()
+        
+        fernet = Fernet(encryption_key)
+        encrypted_bytes = base64.b64decode(encrypted_data.encode())
+        decrypted_bytes = fernet.decrypt(encrypted_bytes)
+        return decrypted_bytes.decode()
+    except Exception as e:
+        # Log error and return as-is for development
+        print(f"Decryption error: {e}")
+        return encrypted_data
+
+
+def generate_encryption_key() -> str:
+    """Generate a new Fernet encryption key for configuration."""
+    from cryptography.fernet import Fernet
+    return Fernet.generate_key().decode()

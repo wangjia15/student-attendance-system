@@ -55,7 +55,7 @@ class AttendanceWebSocketManager {
       return; // Already connected
     }
 
-    const wsUrl = `${process.env.REACT_APP_WS_URL || 'ws://localhost:8000'}/ws/attendance/${classId}`;
+    const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/attendance/${classId}`;
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {

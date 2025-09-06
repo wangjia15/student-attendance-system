@@ -4,29 +4,35 @@ import { Navigation } from './components/Navigation'
 import { LoginForm } from './components/LoginForm'
 import { RegisterForm } from './components/RegisterForm'
 import { AttendanceDashboard } from './components/AttendanceDashboard'
+import { TeacherMainDashboard } from './components/TeacherMainDashboard'
+import { ClassSessionResponse } from './types/api'
 import './App.css'
 
-// Mock data for development
-const mockSession = {
+// Mock data for development (used for students)
+const mockSession: ClassSessionResponse = {
   id: '1',
   name: 'Computer Science 101',
-  code: 'CS101A',
   teacher_id: 'teacher1',
   status: 'active' as const,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
+  start_time: new Date().toISOString(),
   expires_at: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
   qr_code: 'sample-qr-code',
+  qr_data: 'sample-qr-data',
   join_link: 'http://localhost:3000/join/CS101A',
   verification_code: '123456',
-  student_count: 0,
-  attendance_data: []
+  allow_late_join: true,
+  require_verification: true,
+  total_joins: 0,
+  unique_student_count: 0,
+  max_students: 30
 }
 
 type ViewMode = 'dashboard' | 'login' | 'register';
 
 function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [session] = useState(mockSession);
 
@@ -74,10 +80,16 @@ function AppContent() {
             )}
           </>
         ) : (
-          <AttendanceDashboard 
-            session={session}
-            onSessionUpdate={(updates) => console.log('Session updated:', updates)}
-          />
+          // Show different dashboard based on user role
+          user?.role === 'teacher' ? (
+            <TeacherMainDashboard />
+          ) : (
+            // For students, show the attendance dashboard (join session interface)
+            <AttendanceDashboard 
+              session={session}
+              onSessionUpdate={(updates) => console.log('Session updated:', updates)}
+            />
+          )
         )}
       </main>
     </div>

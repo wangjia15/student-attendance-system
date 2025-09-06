@@ -84,7 +84,7 @@ class NotificationsService {
   private offlineQueue: NotificationData[] = [];
   
   constructor() {
-    this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     this.initializeService();
   }
 
@@ -197,7 +197,7 @@ class NotificationsService {
         platform: DevicePlatform.WEB,
         token: JSON.stringify(subscription.toJSON()),
         device_name: navigator.userAgent,
-        app_version: process.env.REACT_APP_VERSION || '1.0.0'
+        app_version: import.meta.env.VITE_APP_VERSION || '1.0.0'
       });
 
       return subscription;

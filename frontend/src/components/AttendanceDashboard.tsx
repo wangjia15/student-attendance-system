@@ -32,7 +32,7 @@ export const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({
     // Initialize with current session stats
     realtimeService.initialize({
       class_id: session.id,
-      class_name: session.class_name,
+      class_name: session.name,
       status: session.status,
       time_remaining_minutes: Math.max(0, 
         Math.floor((new Date(session.expires_at).getTime() - new Date().getTime()) / 60000)
@@ -90,8 +90,16 @@ export const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({
 
   // Calculate time remaining
   const timeRemaining = useMemo(() => {
+    if (!session.expires_at) return 'No expiration';
+    
     const now = new Date();
     const expires = new Date(session.expires_at);
+    
+    // Check if expires_at is a valid date
+    if (isNaN(expires.getTime())) {
+      return 'Invalid date';
+    }
+    
     const diff = expires.getTime() - now.getTime();
     
     if (diff <= 0) return 'Expired';
@@ -109,7 +117,7 @@ export const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({
       {/* Header */}
       <div className="dashboard-header">
         <div className="session-info">
-          <h2>{session.class_name}</h2>
+          <h2>{session.name}</h2>
           {session.subject && <p className="subject">{session.subject}</p>}
           <div className="session-status">
             <span className={`status-badge ${session.status}`}>

@@ -156,7 +156,7 @@ export class RealtimeWebSocketClient {
       reconnectInterval: 3000,
       maxReconnectAttempts: 10,
       heartbeatInterval: 30000,
-      apiBaseUrl: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+      apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
       ...config
     };
   }

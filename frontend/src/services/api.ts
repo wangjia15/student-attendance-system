@@ -16,7 +16,7 @@ import {
   APIError
 } from '../types/api';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Authentication token management
 let authToken: string | null = localStorage.getItem('access_token');
@@ -196,23 +196,21 @@ class APIService {
 // Create and export singleton instance
 const apiService = new APIService();
 
-// Export individual methods for easier importing
-export const {
-  login,
-  register,
-  logout,
-  createClassSession,
-  getClassSessions,
-  getClassSession,
-  updateClassSession,
-  endClassSession,
-  regenerateQRCode,
-  getShareLink,
-  joinClassWithQR,
-  joinClassWithCode,
-  getMyAttendance,
-  checkoutFromClass,
-  getWebSocketURL
-} = apiService;
+// Export individual methods for easier importing (preserving 'this' context)
+export const login = (credentials: LoginRequest) => apiService.login(credentials);
+export const register = (userData: RegisterRequest) => apiService.register(userData);
+export const logout = () => apiService.logout();
+export const createClassSession = (sessionData: ClassSessionCreate) => apiService.createClassSession(sessionData);
+export const getClassSessions = () => apiService.getClassSessions();
+export const getClassSession = (sessionId: number) => apiService.getClassSession(sessionId);
+export const updateClassSession = (sessionId: number, updates: Partial<ClassSessionCreate>) => apiService.updateClassSession(sessionId, updates);
+export const endClassSession = (sessionId: number) => apiService.endClassSession(sessionId);
+export const regenerateQRCode = (sessionId: number) => apiService.regenerateQRCode(sessionId);
+export const getShareLink = (sessionId: number) => apiService.getShareLink(sessionId);
+export const joinClassWithQR = (joinData: StudentJoinRequest) => apiService.joinClassWithQR(joinData);
+export const joinClassWithCode = (joinData: VerificationCodeJoinRequest) => apiService.joinClassWithCode(joinData);
+export const getMyAttendance = () => apiService.getMyAttendance();
+export const checkoutFromClass = (sessionId: number) => apiService.checkoutFromClass(sessionId);
+export const getWebSocketURL = (classId: number) => apiService.getWebSocketURL(classId);
 
 export default apiService;

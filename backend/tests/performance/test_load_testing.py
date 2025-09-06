@@ -253,9 +253,94 @@ class AttendanceSystemLoadTests:
     
     async def test_websocket_connections(self, concurrent_connections: int = 500):
         """Test WebSocket connection capacity."""
-        # This would test WebSocket connections concurrently
-        # Implementation depends on WebSocket client library
-        pass
+        import websockets
+        import time
+        
+        async def single_websocket_test(connection_id: int) -> Dict[str, Any]:
+            """Test a single WebSocket connection."""
+            url = f"ws://localhost:8000/ws/v2/load_test_{connection_id}_{int(time.time())}"
+            start_time = time.time()
+            
+            try:
+                websocket = await websockets.connect(url, timeout=10)
+                
+                # Send a test message
+                test_message = {
+                    'type': 'test_message',
+                    'connection_id': connection_id,
+                    'timestamp': time.time()
+                }
+                await websocket.send(json.dumps(test_message))
+                
+                # Wait for response or timeout
+                try:
+                    response = await asyncio.wait_for(websocket.recv(), timeout=5)
+                    response_data = json.loads(response)
+                    success = True
+                except asyncio.TimeoutError:
+                    success = True  # No response expected for load test
+                    response_data = {}
+                
+                await websocket.close()
+                end_time = time.time()
+                
+                return {
+                    'success': True,
+                    'connection_time': end_time - start_time,
+                    'connection_id': connection_id,
+                    'response': response_data
+                }
+                
+            except Exception as e:
+                end_time = time.time()
+                return {
+                    'success': False,
+                    'connection_time': end_time - start_time,
+                    'connection_id': connection_id,
+                    'error': str(e)
+                }
+        
+        # Create concurrent WebSocket connection tasks
+        logger.info(f"Starting WebSocket load test with {concurrent_connections} connections")
+        
+        tasks = [single_websocket_test(i) for i in range(concurrent_connections)]
+        start_time = time.time()
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        end_time = time.time()
+        
+        # Process results
+        successful_connections = 0
+        failed_connections = 0
+        connection_times = []
+        errors = []
+        
+        for result in results:
+            if isinstance(result, Exception):
+                failed_connections += 1
+                errors.append(str(result))
+            elif result.get('success'):
+                successful_connections += 1
+                connection_times.append(result['connection_time'])
+            else:
+                failed_connections += 1
+                errors.append(result.get('error', 'Unknown error'))
+        
+        # Calculate metrics
+        total_time = end_time - start_time
+        success_rate = (successful_connections / concurrent_connections) * 100
+        avg_connection_time = statistics.mean(connection_times) if connection_times else 0
+        connections_per_second = concurrent_connections / total_time if total_time > 0 else 0
+        
+        return {
+            'total_connections': concurrent_connections,
+            'successful_connections': successful_connections,
+            'failed_connections': failed_connections,
+            'success_rate': success_rate,
+            'total_time': total_time,
+            'average_connection_time': avg_connection_time,
+            'connections_per_second': connections_per_second,
+            'errors': errors[:10]  # Limit to first 10 errors
+        }
     
     async def test_database_query_performance(self, concurrent_queries: int = 200):
         """Test database query performance under load."""
@@ -341,6 +426,35 @@ async def test_database_performance_under_load():
 
 @pytest.mark.asyncio
 @pytest.mark.performance
+async def test_websocket_performance():
+    """Test WebSocket connection performance and capacity."""
+    async with PerformanceTester() as tester:
+        attendance_tests = AttendanceSystemLoadTests(tester)
+        
+        # Test WebSocket performance with increasing loads
+        test_loads = [50, 100, 250]
+        
+        for concurrent_connections in test_loads:
+            ws_results = await attendance_tests.test_websocket_connections(
+                concurrent_connections=concurrent_connections
+            )
+            
+            # WebSocket performance assertions
+            assert ws_results['success_rate'] >= 90.0, f"WebSocket success rate too low with {concurrent_connections} connections: {ws_results['success_rate']}%"
+            assert ws_results['average_connection_time'] <= 2.0, f"WebSocket connection time too high: {ws_results['average_connection_time']}s"
+            assert ws_results['connections_per_second'] >= 25, f"WebSocket connection rate too low: {ws_results['connections_per_second']} conn/s"
+            
+            logger.info(f"WebSocket performance test ({concurrent_connections} connections):")
+            logger.info(f"  Success rate: {ws_results['success_rate']:.2f}%")
+            logger.info(f"  Average connection time: {ws_results['average_connection_time']:.3f}s")
+            logger.info(f"  Connections/second: {ws_results['connections_per_second']:.2f}")
+            
+            if ws_results.get('errors'):
+                logger.warning(f"  Errors encountered: {len(ws_results['errors'])}")
+
+
+@pytest.mark.asyncio
+@pytest.mark.performance
 async def test_system_endurance():
     """Test system stability over extended period."""
     async with PerformanceTester() as tester:
@@ -396,6 +510,9 @@ if __name__ == "__main__":
             
             await test_database_performance_under_load()
             print("✅ Database Performance: PASSED")
+            
+            await test_websocket_performance()
+            print("✅ WebSocket Performance: PASSED")
             
             await test_system_endurance()
             print("✅ System Endurance: PASSED")

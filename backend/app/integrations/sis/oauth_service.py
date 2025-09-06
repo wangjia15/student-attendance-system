@@ -385,15 +385,13 @@ class SISOAuthService:
         
     def _encrypt_token(self, token: str) -> str:
         """Encrypt token for secure storage."""
-        # In production, use proper encryption
-        # For now, return as-is (should implement encrypt_data function)
-        return token
+        from app.core.security import encrypt_data
+        return encrypt_data(token)
         
     def _decrypt_token(self, encrypted_token: str) -> str:
         """Decrypt token for use."""
-        # In production, use proper decryption
-        # For now, return as-is (should implement decrypt_data function)
-        return encrypted_token
+        from app.core.security import decrypt_data
+        return decrypt_data(encrypted_token)
         
     async def get_decrypted_token(self, token: SISOAuthToken) -> str:
         """Get decrypted access token for API calls."""
