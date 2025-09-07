@@ -4,11 +4,7 @@ from typing import Optional, List
 from enum import Enum
 
 
-class SessionStatus(str, Enum):
-    ACTIVE = "active"
-    PAUSED = "paused"
-    ENDED = "ended"
-    EXPIRED = "expired"
+# Removed SessionStatus enum - using string literals instead
 
 
 class ClassSessionBase(BaseModel):
@@ -31,7 +27,7 @@ class ClassSessionUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     subject: Optional[str] = Field(None, max_length=100)
     location: Optional[str] = Field(None, max_length=255)
-    status: Optional[SessionStatus] = None
+    status: Optional[str] = None
     allow_late_join: Optional[bool] = None
     require_verification: Optional[bool] = None
     end_time: Optional[datetime] = None
@@ -40,7 +36,7 @@ class ClassSessionUpdate(BaseModel):
 class ClassSession(ClassSessionBase):
     id: int
     teacher_id: int
-    status: SessionStatus
+    status: str
     jwt_token: str
     verification_code: str
     qr_data: Optional[str] = None
@@ -59,7 +55,7 @@ class ClassSessionResponse(BaseModel):
     description: Optional[str] = None
     subject: Optional[str] = None
     location: Optional[str] = None
-    status: SessionStatus
+    status: str
     verification_code: str
     qr_data: Optional[str] = None
     start_time: datetime

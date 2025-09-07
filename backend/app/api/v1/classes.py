@@ -13,13 +13,33 @@ from app.core.security import create_class_token, create_verification_code
 from app.core.config import settings
 from app.services.qr_generator import generate_class_qr_code
 from app.models.user import User
-from app.models.class_session import ClassSession, SessionStatus
+from app.models.class_session import ClassSession
 from app.schemas.class_session import (
     ClassSessionCreate, ClassSessionResponse, ClassSessionUpdate,
     QRCodeResponse
 )
 
 router = APIRouter()
+
+
+def session_to_response(session: ClassSession) -> ClassSessionResponse:
+    """Convert ClassSession model to response schema to avoid enum validation issues."""
+    return ClassSessionResponse(
+        id=session.id,
+        name=session.name,
+        description=session.description,
+        subject=session.subject,
+        location=session.location,
+        status=session.status,
+        verification_code=session.verification_code,
+        qr_data=session.qr_data,
+        start_time=session.start_time,
+        end_time=session.end_time,
+        duration_minutes=session.duration_minutes,
+        allow_late_join=session.allow_late_join,
+        require_verification=session.require_verification,
+        created_at=session.created_at
+    )
 
 
 @router.post("/create", response_model=ClassSessionResponse)
@@ -59,14 +79,14 @@ async def create_class_session(
             allow_late_join=session_data.allow_late_join,
             require_verification=session_data.require_verification,
             auto_end_minutes=session_data.auto_end_minutes,
-            status=SessionStatus.ACTIVE
+            status="active"
         )
         
         db.add(session)
         await db.commit()
         await db.refresh(session)
         
-        return ClassSessionResponse.from_orm(session)
+        return session_to_response(session)
         
     except Exception as e:
         await db.rollback()
@@ -80,7 +100,7 @@ async def create_class_session(
 async def list_sessions(
     db: AsyncSession = Depends(get_db),
     current_teacher: User = Depends(get_current_teacher),
-    status_filter: SessionStatus = None,
+    status_filter: str = None,
     limit: int = 50,
     offset: int = 0
 ):
@@ -96,7 +116,7 @@ async def list_sessions(
         result = await db.execute(query)
         sessions = result.scalars().all()
         
-        return [ClassSessionResponse.from_orm(session) for session in sessions]
+        return [session_to_response(session) for session in sessions]
         
     except Exception as e:
         raise HTTPException(
@@ -127,7 +147,7 @@ async def get_session(
                 detail="Session not found or access denied"
             )
         
-        return ClassSessionResponse.from_orm(session)
+        return session_to_response(session)
         
     except HTTPException:
         raise
@@ -170,7 +190,7 @@ async def update_session(
         await db.commit()
         await db.refresh(session)
         
-        return ClassSessionResponse.from_orm(session)
+        return session_to_response(session)
         
     except HTTPException:
         raise
@@ -308,7 +328,7 @@ async def end_session(
                 detail="Session not found or access denied"
             )
         
-        session.status = SessionStatus.ENDED
+        session.status = "ended"
         session.end_time = datetime.utcnow()
         session.updated_at = datetime.utcnow()
         

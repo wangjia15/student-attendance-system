@@ -14,7 +14,7 @@ from sqlalchemy import select, and_, func, or_, distinct
 from sqlalchemy.orm import joinedload
 
 from app.models.attendance import AttendanceRecord, AttendanceStatus, AttendanceAuditLog
-from app.models.class_session import ClassSession, SessionStatus
+from app.models.class_session import ClassSession
 from app.models.user import User, UserRole
 from app.schemas.attendance import (
     StudentAttendancePattern, AttendanceAlert, AttendanceStats

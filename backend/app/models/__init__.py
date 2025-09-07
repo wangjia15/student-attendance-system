@@ -1,5 +1,5 @@
 from .user import User, UserRole
-from .class_session import ClassSession, SessionStatus
+from .class_session import ClassSession
 from .attendance import AttendanceRecord, AttendanceStatus, AttendanceAuditLog
 from .attendance_pattern import (
     AttendancePatternAnalysis, AttendanceAlert, AttendanceInsight, 
@@ -18,7 +18,6 @@ __all__ = [
     "User",
     "UserRole", 
     "ClassSession",
-    "SessionStatus",
     "AttendanceRecord",
     "AttendanceStatus",
     "AttendanceAuditLog",

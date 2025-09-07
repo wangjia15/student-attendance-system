@@ -52,11 +52,7 @@ class StudentEnrollment(Base):
     class_ = relationship("Class", foreign_keys=[class_id])
 
 
-class SessionStatus(str, enum.Enum):
-    ACTIVE = "active"
-    PAUSED = "paused"
-    ENDED = "ended"
-    EXPIRED = "expired"
+# Removed SessionStatus enum - using string literals instead
 
 
 class ClassSession(Base):
@@ -75,7 +71,7 @@ class ClassSession(Base):
     teacher = relationship("User", back_populates="classes_teaching")
     
     # Session status and tokens
-    status = Column(SQLEnum(SessionStatus), default=SessionStatus.ACTIVE)
+    status = Column(String(10), default="active")
     jwt_token = Column(Text, nullable=False)
     verification_code = Column(String(6), nullable=False, index=True)
     qr_data = Column(Text, nullable=True)

@@ -7,12 +7,15 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 from typing import Optional, List
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.auth import get_current_user, decode_token
 from app.core.security import verify_verification_code
 from app.models.user import User, UserRole
-from app.models.class_session import ClassSession, SessionStatus
+from app.models.class_session import ClassSession
 from app.models.attendance import AttendanceRecord, AttendanceStatus, AttendanceAuditLog
 from app.services.attendance_engine import AttendanceEngine
 from app.schemas.attendance import (
@@ -60,14 +63,14 @@ async def student_check_in_qr(
             result = await db.execute(
                 select(ClassSession).where(
                     ClassSession.id == session_id,
-                    ClassSession.status == SessionStatus.ACTIVE
+                    ClassSession.status == "active"
                 )
             )
         else:
             result = await db.execute(
                 select(ClassSession).where(
                     ClassSession.teacher_id == teacher_id,
-                    ClassSession.status == SessionStatus.ACTIVE
+                    ClassSession.status == "active"
                 ).order_by(ClassSession.created_at.desc())
             )
         
@@ -181,11 +184,12 @@ async def student_check_in_code(
 ):
     """Student self-check-in using 6-digit verification code with late detection."""
     try:
+        
         # Find the class session with this verification code
         result = await db.execute(
             select(ClassSession).where(
                 ClassSession.verification_code == join_data.verification_code,
-                ClassSession.status == SessionStatus.ACTIVE
+                ClassSession.status == "active"
             )
         )
         session = result.scalar_one_or_none()
@@ -307,9 +311,11 @@ async def get_my_attendance(
 ):
     """Get current user's attendance history."""
     try:
+        # Join with teacher user table to get teacher name
         result = await db.execute(
-            select(AttendanceRecord, ClassSession)
+            select(AttendanceRecord, ClassSession, User)
             .join(ClassSession, AttendanceRecord.class_session_id == ClassSession.id)
+            .join(User, ClassSession.teacher_id == User.id)
             .where(AttendanceRecord.student_id == current_user.id)
             .order_by(AttendanceRecord.created_at.desc())
             .offset(offset)
@@ -318,17 +324,26 @@ async def get_my_attendance(
         records = result.all()
         
         attendance_list = []
-        for attendance, session in records:
+        for attendance, session, teacher in records:
             attendance_list.append(AttendanceResponse(
                 id=attendance.id,
                 class_session_id=attendance.class_session_id,
                 class_name=session.name,
                 subject=session.subject,
-                teacher_name="",  # Would need to join with teacher user table
+                teacher_name=teacher.full_name or teacher.username,
+                student_name=current_user.full_name or current_user.username,
                 status=attendance.status,
                 check_in_time=attendance.check_in_time,
                 check_out_time=attendance.check_out_time,
-                verification_method=attendance.verification_method
+                verification_method=attendance.verification_method,
+                is_late=attendance.is_late or False,
+                late_minutes=attendance.late_minutes or 0,
+                is_manual_override=attendance.is_manual_override or False,
+                override_reason=attendance.override_reason,
+                override_teacher_name=teacher.full_name or teacher.username if attendance.is_manual_override else None,
+                notes=attendance.notes,
+                created_at=attendance.created_at,
+                updated_at=attendance.updated_at
             ))
         
         return attendance_list

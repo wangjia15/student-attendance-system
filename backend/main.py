@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.database import init_db
 from app.core.websocket import websocket_server
-from app.api.v1 import classes, auth, attendance
+from app.api.v1 import classes, auth, attendance, admin  # Admin module for system management
 # from app.api.v1 import sis  # Temporarily disabled due to missing integration modules
 from app.websocket.live_updates import manager
 from app.websocket.event_handlers import attendance_event_handler
@@ -50,6 +50,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(classes.router, prefix="/api/v1/classes", tags=["classes"])
 app.include_router(attendance.router, prefix="/api/v1/attendance", tags=["attendance"])
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 # app.include_router(sis.router, prefix="/api/v1/sis", tags=["sis-integration"])  # Temporarily disabled
 
 # WebSocket endpoints
