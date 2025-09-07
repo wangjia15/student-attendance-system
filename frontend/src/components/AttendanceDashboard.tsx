@@ -3,6 +3,10 @@ import { ClassSessionResponse } from '../types/api';
 import { useClassSessionWebSocket } from '../hooks/useWebSocket';
 import { realtimeService, RealtimeState, StudentJoinEvent } from '../services/realtime';
 import { StudentJoinNotification } from './StudentJoinNotification';
+import { QRCodeGenerator } from './QRCodeGenerator';
+import { VerificationCodeDisplay } from './VerificationCodeDisplay';
+import { getClassMembers } from '../services/api';
+import { UserResponse } from '../types/api';
 import './AttendanceDashboard.css';
 
 interface AttendanceDashboardProps {
@@ -17,35 +21,50 @@ export const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({
   const [realtimeState, setRealtimeState] = useState<RealtimeState>(realtimeService.getState());
   const [selectedTimeRange, setSelectedTimeRange] = useState<'1m' | '5m' | '15m' | 'all'>('5m');
   const [showNotifications, setShowNotifications] = useState(true);
+  const [enrolledStudents, setEnrolledStudents] = useState<UserResponse[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(true);
 
   // WebSocket connection for live updates
   const wsConnection = useClassSessionWebSocket(
-    session.id,
+    session.id.toString(),
     session.jwt_token || '', // Use JWT token from session
     true // Enable connection
   );
+
+  // Fetch enrolled students
+  useEffect(() => {
+    const loadEnrolledStudents = async () => {
+      try {
+        setLoadingStudents(true);
+        const students = await getClassMembers(session.id);
+        setEnrolledStudents(students);
+      } catch (error) {
+        console.error('Failed to load enrolled students:', error);
+        setEnrolledStudents([]);
+      } finally {
+        setLoadingStudents(false);
+      }
+    };
+
+    loadEnrolledStudents();
+  }, [session.id]);
 
   // Subscribe to realtime service updates
   useEffect(() => {
     const unsubscribe = realtimeService.subscribe(setRealtimeState);
     
-    // Initialize with current session stats
+    // Initialize with current session stats using actual enrolled students count
     realtimeService.initialize({
-      class_id: session.id,
-      class_name: session.name,
-      status: session.status,
-      time_remaining_minutes: Math.max(0, 
-        Math.floor((new Date(session.expires_at).getTime() - new Date().getTime()) / 60000)
-      ),
-      total_joins: session.total_joins,
-      unique_students: session.unique_student_count,
-      recent_joins: [],
-      participation_rate: session.max_students ? 
-        (session.unique_student_count / session.max_students) * 100 : undefined
+      class_session_id: session.id,
+      total_students: session.max_students || enrolledStudents.length,
+      present_students: session.student_count || enrolledStudents.length,
+      late_students: 0,
+      absent_students: Math.max(0, (session.max_students || enrolledStudents.length) - (session.student_count || enrolledStudents.length)),
+      last_updated: new Date().toISOString()
     });
 
     return unsubscribe;
-  }, [session]);
+  }, [session, enrolledStudents.length]);
 
   // Process WebSocket messages
   useEffect(() => {
@@ -162,8 +181,8 @@ export const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({
         </div>
 
         <div className="metric-card">
-          <div className="metric-value">{realtimeState.sessionMetrics.uniqueStudents}</div>
-          <div className="metric-label">Unique Students</div>
+          <div className="metric-value">{session.student_count || enrolledStudents.length}</div>
+          <div className="metric-label">Enrolled Students</div>
           {session.max_students && (
             <div className="metric-change">
               of {session.max_students} expected
@@ -198,6 +217,26 @@ export const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({
         </div>
       </div>
 
+      {/* QR Code and Verification Code Section */}
+      <div className="attendance-codes-section">
+        <div className="codes-grid">
+          <div className="qr-code-panel">
+            <QRCodeGenerator 
+              session={session}
+              onUpdate={onSessionUpdate}
+              className="dashboard-qr"
+            />
+          </div>
+          <div className="verification-code-panel">
+            <VerificationCodeDisplay 
+              session={session}
+              onUpdate={onSessionUpdate}
+              className="dashboard-verification"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Time Range Filter */}
       <div className="dashboard-controls">
         <div className="time-range-filter">
@@ -227,14 +266,15 @@ export const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({
         </div>
       </div>
 
-      {/* Student Joins List */}
+      {/* Enrolled Students List */}
       <div className="student-joins-section">
         <h3>
-          Recent Student Joins 
-          <span className="join-count">({filteredStudentJoins.length})</span>
+          Enrolled Students 
+          <span className="join-count">({enrolledStudents.length})</span>
+          {loadingStudents && <span className="loading-indicator">Loading...</span>}
         </h3>
         
-        {filteredStudentJoins.length === 0 ? (
+        {enrolledStudents.length === 0 && !loadingStudents ? (
           <div className="empty-state">
             <span className="empty-icon">👥</span>
             <p>No students have joined yet</p>
@@ -244,27 +284,52 @@ export const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({
           </div>
         ) : (
           <div className="joins-list">
-            {filteredStudentJoins.map((join) => (
+            {enrolledStudents.map((student) => (
               <div 
-                key={join.id} 
-                className={`join-item ${join.isRecent ? 'recent' : ''}`}
+                key={student.id} 
+                className="join-item enrolled"
               >
                 <div className="student-info">
-                  <div className="student-name">{join.studentName}</div>
+                  <div className="student-name">{student.full_name || student.username}</div>
                   <div className="join-details">
-                    <span className="join-method">{join.joinMethod.replace('_', ' ')}</span>
-                    <span className="join-time">
-                      {join.joinedAt.toLocaleTimeString()}
-                    </span>
+                    <span className="student-email">{student.email}</span>
+                    <span className="join-status-text">Enrolled</span>
                   </div>
                 </div>
                 <div className="join-status">
-                  {join.isRecent && <span className="new-badge">New</span>}
                   <span className="join-icon">✅</span>
                 </div>
               </div>
             ))}
           </div>
+        )}
+        
+        {filteredStudentJoins.length > 0 && (
+          <>
+            <h4 className="recent-joins-header">Recent Real-time Joins</h4>
+            <div className="joins-list">
+              {filteredStudentJoins.map((join) => (
+                <div 
+                  key={join.id} 
+                  className={`join-item realtime ${join.isRecent ? 'recent' : ''}`}
+                >
+                  <div className="student-info">
+                    <div className="student-name">{join.studentName}</div>
+                    <div className="join-details">
+                      <span className="join-method">{join.joinMethod.replace('_', ' ')}</span>
+                      <span className="join-time">
+                        {join.joinedAt.toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="join-status">
+                    {join.isRecent && <span className="new-badge">New</span>}
+                    <span className="join-icon">✅</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

@@ -38,18 +38,28 @@ export interface ClassSessionCreate {
 export interface ClassSessionResponse {
   id: number;
   name: string;
+  class_name?: string; // Alternative name field used in some contexts
   description?: string;
   subject?: string;
   location?: string;
   status: SessionStatus;
   verification_code: string;
   qr_data?: string;
+  qr_code_data?: string; // QR code base64 data
+  jwt_token?: string; // JWT token for WebSocket authentication
   start_time: string;
   end_time?: string;
+  expires_at?: string; // When the session expires
   duration_minutes?: number;
   allow_late_join: boolean;
   require_verification: boolean;
   created_at: string;
+  updated_at?: string;
+  student_count?: number; // Number of unique students who joined
+  max_students?: number; // Maximum allowed students
+  total_joins?: number; // Total number of join attempts
+  share_link?: string; // Web link for sharing
+  join_link?: string; // Alternative join link
 }
 
 export interface QRCodeResponse {
@@ -93,6 +103,8 @@ export interface UserResponse {
   is_verified: boolean;
   created_at: string;
   last_login?: string;
+  first_name?: string;  // Legacy support
+  last_name?: string;   // Legacy support
 }
 
 export interface Token {
@@ -184,4 +196,41 @@ export interface SessionEndedMessage extends WebSocketMessage {
 export interface APIError {
   detail: string;
   status_code: number;
+}
+
+// Admin Dashboard Types
+export interface SystemStats {
+  total_users: number;
+  total_teachers: number;
+  total_students: number;
+  active_classes: number;
+  total_attendance_records: number;
+  attendance_rate: number;
+}
+
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  last_login?: string;
+}
+
+export interface AdminClassSession {
+  id: number;
+  name: string;
+  description?: string;
+  subject?: string;
+  location?: string;
+  teacher_name: string;
+  status: string;
+  start_time: string;
+  end_time?: string;
+  total_attendance_records: number;
+  present_count: number;
+  attendance_rate: number;
+  created_at: string;
 }

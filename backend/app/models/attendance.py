@@ -48,9 +48,9 @@ class AttendanceRecord(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
-    student = relationship("User", back_populates="attendance_records", foreign_keys=[student_id])
+    student = relationship("User", back_populates="attendance_records", foreign_keys=[student_id], overlaps="override_teacher")
     class_session = relationship("ClassSession", back_populates="attendance_records")
-    override_teacher = relationship("User", foreign_keys=[override_by_teacher_id])
+    override_teacher = relationship("User", foreign_keys=[override_by_teacher_id], overlaps="student")
 
 
 class AttendanceAuditLog(Base):

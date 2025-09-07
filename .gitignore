@@ -1,3 +1,7 @@
 .DS_Store
 CLAUDE.md
-.playwright-mcp/
+.plnewaywright-mcp/
+**/*.prc
+
+**/__pycache__/
+**/**/__pycache__/

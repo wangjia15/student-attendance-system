@@ -94,6 +94,25 @@ class ClassSession(Base):
     attendance_records = relationship("AttendanceRecord", back_populates="class_session", cascade="all, delete-orphan")
     attendance_alerts = relationship("AttendanceAlert", back_populates="class_session")
     
+    # Enrolled students - join through attendance records to get unique students who joined this session
+    def get_enrolled_students(self, db_session):
+        """Get unique students who have joined this class session."""
+        from app.models.user import User
+        from app.models.attendance import AttendanceRecord
+        from sqlalchemy import select, distinct
+        
+        # Use direct query to avoid relationship join ambiguity
+        result = db_session.execute(
+            select(User).where(
+                User.id.in_(
+                    select(distinct(AttendanceRecord.student_id)).where(
+                        AttendanceRecord.class_session_id == self.id
+                    )
+                )
+            )
+        )
+        return result.scalars().all()
+    
     @property
     def class_name(self) -> str:
         """Get class name for analytics compatibility."""

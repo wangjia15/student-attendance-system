@@ -6,6 +6,44 @@
   min-height: 100vh;
 }
 
+/* QR Code and Verification Code Section */
+.attendance-codes-section {
+  margin: 1.5rem 0;
+}
+
+.codes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.qr-code-panel,
+.verification-code-panel {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.qr-code-panel .dashboard-qr,
+.verification-code-panel .dashboard-verification {
+  padding: 1.5rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .codes-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .qr-code-panel .dashboard-qr,
+  .verification-code-panel .dashboard-verification {
+    padding: 1rem;
+  }
+}
+
 .dashboard-header {
   display: flex;
   justify-content: space-between;

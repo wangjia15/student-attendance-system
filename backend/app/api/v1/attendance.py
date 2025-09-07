@@ -3,7 +3,7 @@ API endpoints for student attendance and check-in with advanced state management
 """
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 from typing import Optional, List
@@ -15,7 +15,7 @@ from app.core.database import get_db
 from app.core.auth import get_current_user, decode_token
 from app.core.security import verify_verification_code
 from app.models.user import User, UserRole
-from app.models.class_session import ClassSession
+from app.models.class_session import ClassSession, StudentEnrollment
 from app.models.attendance import AttendanceRecord, AttendanceStatus, AttendanceAuditLog
 from app.services.attendance_engine import AttendanceEngine
 from app.schemas.attendance import (
@@ -145,6 +145,29 @@ async def student_check_in_qr(
                 check_in_time=check_in_time
             )
         
+        # Ensure student is enrolled in the class if class_id exists
+        if session.class_id:
+            # Check if student enrollment already exists
+            enrollment_result = await db.execute(
+                select(StudentEnrollment).where(
+                    and_(
+                        StudentEnrollment.student_id == current_user.id,
+                        StudentEnrollment.class_id == session.class_id,
+                        StudentEnrollment.is_active == True
+                    )
+                )
+            )
+            existing_enrollment = enrollment_result.scalar_one_or_none()
+            
+            if not existing_enrollment:
+                # Create new student enrollment
+                enrollment = StudentEnrollment(
+                    student_id=current_user.id,
+                    class_id=session.class_id,
+                    is_active=True
+                )
+                db.add(enrollment)
+        
         await db.commit()
         await db.refresh(attendance_record)
         
@@ -271,6 +294,29 @@ async def student_check_in_code(
                 request.headers.get("user-agent"),
                 check_in_time=check_in_time
             )
+        
+        # Ensure student is enrolled in the class if class_id exists
+        if session.class_id:
+            # Check if student enrollment already exists
+            enrollment_result = await db.execute(
+                select(StudentEnrollment).where(
+                    and_(
+                        StudentEnrollment.student_id == current_user.id,
+                        StudentEnrollment.class_id == session.class_id,
+                        StudentEnrollment.is_active == True
+                    )
+                )
+            )
+            existing_enrollment = enrollment_result.scalar_one_or_none()
+            
+            if not existing_enrollment:
+                # Create new student enrollment
+                enrollment = StudentEnrollment(
+                    student_id=current_user.id,
+                    class_id=session.class_id,
+                    is_active=True
+                )
+                db.add(enrollment)
         
         await db.commit()
         await db.refresh(attendance_record)
@@ -838,4 +884,141 @@ async def get_attendance_audit_trail(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get audit trail: {str(e)}"
+        )
+
+
+@router.get("/test-route")
+async def test_route():
+    """Test endpoint to verify routing works."""
+    return {"status": "success", "message": "Route is working"}
+
+
+@router.get("/my-classes")
+async def get_my_enrolled_classes(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    status_filter: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get classes that the current student has attended or is enrolled in."""
+    try:
+        # Build base query to get classes where student has attendance records
+        query = (
+            select(ClassSession, User.full_name.label('teacher_name'))
+            .join(AttendanceRecord, ClassSession.id == AttendanceRecord.class_session_id)
+            .join(User, ClassSession.teacher_id == User.id)
+            .where(AttendanceRecord.student_id == current_user.id)
+        )
+        
+        # Apply status filter if provided
+        if status_filter:
+            query = query.where(ClassSession.status == status_filter)
+        
+        # Add ordering and pagination
+        query = query.order_by(ClassSession.created_at.desc()).offset(offset).limit(limit)
+        
+        result = await db.execute(query)
+        classes_data = result.all()
+        
+        enrolled_classes = []
+        for session, teacher_name in classes_data:
+            # Get the student's latest attendance record for this class
+            attendance_result = await db.execute(
+                select(AttendanceRecord)
+                .where(
+                    and_(
+                        AttendanceRecord.student_id == current_user.id,
+                        AttendanceRecord.class_session_id == session.id
+                    )
+                )
+                .order_by(AttendanceRecord.created_at.desc())
+                .limit(1)
+            )
+            latest_attendance = attendance_result.scalar_one_or_none()
+            
+            # Determine if there's an active session requiring check-in
+            is_active_session = session.status == "active"
+            requires_checkin = is_active_session and (not latest_attendance or not latest_attendance.check_in_time)
+            
+            enrolled_classes.append({
+                "id": session.id,
+                "name": session.name,
+                "subject": session.subject,
+                "teacher_name": teacher_name,
+                "status": session.status,
+                "start_time": session.start_time,
+                "end_time": session.end_time,
+                "verification_code": session.verification_code if is_active_session else None,
+                "is_active_session": is_active_session,
+                "requires_checkin": requires_checkin,
+                "last_attendance_status": latest_attendance.status if latest_attendance else None,
+                "last_check_in_time": latest_attendance.check_in_time if latest_attendance else None,
+                "created_at": session.created_at,
+                "location": getattr(session, 'location', None),
+                "description": getattr(session, 'description', None)
+            })
+        
+        return enrolled_classes
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get enrolled classes: {str(e)}"
+        )
+
+
+@router.get("/active-sessions")
+async def get_active_sessions_for_student(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get active class sessions that require check-in from student."""
+    try:
+        # Get all active sessions where student has an attendance record (i.e., is enrolled)
+        # but hasn't checked in yet
+        query = (
+            select(ClassSession, User.full_name.label('teacher_name'), AttendanceRecord)
+            .join(AttendanceRecord, ClassSession.id == AttendanceRecord.class_session_id)
+            .join(User, ClassSession.teacher_id == User.id)
+            .where(
+                and_(
+                    AttendanceRecord.student_id == current_user.id,
+                    ClassSession.status == "active",
+                    AttendanceRecord.check_in_time.is_(None)
+                )
+            )
+            .order_by(ClassSession.start_time.desc())
+        )
+        
+        result = await db.execute(query)
+        active_sessions_data = result.all()
+        
+        active_sessions = []
+        for session, teacher_name, attendance_record in active_sessions_data:
+            # Check if session just started (within last 30 minutes)
+            session_age = datetime.utcnow() - session.start_time
+            is_newly_started = session_age.total_seconds() <= 1800  # 30 minutes
+            
+            active_sessions.append({
+                "id": session.id,
+                "name": session.name,
+                "subject": session.subject,
+                "teacher_name": teacher_name,
+                "start_time": session.start_time,
+                "end_time": session.end_time,
+                "verification_code": session.verification_code,
+                "is_newly_started": is_newly_started,
+                "session_age_minutes": int(session_age.total_seconds() / 60),
+                "location": getattr(session, 'location', None),
+                "allow_late_join": session.allow_late_join,
+                "attendance_record_id": attendance_record.id
+            })
+        
+        return active_sessions
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get active sessions: {str(e)}"
         )

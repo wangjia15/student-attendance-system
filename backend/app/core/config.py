@@ -19,11 +19,7 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # CORS settings
-    ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "https://attendance.school.edu"
-    ]
+    ALLOWED_ORIGINS: List[str] = ["*"]  # Temporary: allow all origins for testing
     
     # Database settings
     DATABASE_URL: str = "sqlite+aiosqlite:///./attendance.db"

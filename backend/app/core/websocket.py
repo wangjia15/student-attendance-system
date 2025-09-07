@@ -147,7 +147,13 @@ class ConnectionPool:
     def _start_cleanup_task(self):
         """Start background cleanup task."""
         if self._cleanup_task is None:
-            self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
+            try:
+                # Only create task if we have a running event loop
+                loop = asyncio.get_running_loop()
+                self._cleanup_task = loop.create_task(self._periodic_cleanup())
+            except RuntimeError:
+                # No running event loop, task will be started later
+                pass
     
     async def _periodic_cleanup(self):
         """Periodically clean up stale connections."""

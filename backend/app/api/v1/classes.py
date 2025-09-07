@@ -1,9 +1,9 @@
 """
 API endpoints for class session management.
 """
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func, text
 from typing import List
 from datetime import datetime, timedelta
 
@@ -14,32 +14,42 @@ from app.core.config import settings
 from app.services.qr_generator import generate_class_qr_code
 from app.models.user import User
 from app.models.class_session import ClassSession
+from app.models.attendance import AttendanceRecord
 from app.schemas.class_session import (
     ClassSessionCreate, ClassSessionResponse, ClassSessionUpdate,
     QRCodeResponse
 )
+from app.schemas.auth import UserResponse
 
 router = APIRouter()
 
 
-def session_to_response(session: ClassSession) -> ClassSessionResponse:
+def session_to_response(session: ClassSession, include_student_count: bool = False) -> ClassSessionResponse:
     """Convert ClassSession model to response schema to avoid enum validation issues."""
-    return ClassSessionResponse(
-        id=session.id,
-        name=session.name,
-        description=session.description,
-        subject=session.subject,
-        location=session.location,
-        status=session.status,
-        verification_code=session.verification_code,
-        qr_data=session.qr_data,
-        start_time=session.start_time,
-        end_time=session.end_time,
-        duration_minutes=session.duration_minutes,
-        allow_late_join=session.allow_late_join,
-        require_verification=session.require_verification,
-        created_at=session.created_at
-    )
+    response_data = {
+        "id": session.id,
+        "name": session.name,
+        "description": session.description,
+        "subject": session.subject,
+        "location": session.location,
+        "status": session.status,
+        "verification_code": session.verification_code,
+        "qr_data": session.qr_data,
+        "start_time": session.start_time,
+        "end_time": session.end_time,
+        "duration_minutes": session.duration_minutes,
+        "allow_late_join": session.allow_late_join,
+        "require_verification": session.require_verification,
+        "created_at": session.created_at
+    }
+    
+    if include_student_count:
+        # Get unique student count using direct query to avoid relationship join issues
+        from app.models.attendance import AttendanceRecord
+        from sqlalchemy import func, select
+        # This needs to be called with a database session, so we'll handle it in the endpoint
+    
+    return ClassSessionResponse(**response_data)
 
 
 @router.post("/create", response_model=ClassSessionResponse)
@@ -116,7 +126,40 @@ async def list_sessions(
         result = await db.execute(query)
         sessions = result.scalars().all()
         
-        return [session_to_response(session) for session in sessions]
+        # Build responses with student counts
+        session_responses = []
+        for session in sessions:
+            # Calculate student count manually to avoid join issues
+            count_result = await db.execute(
+                select(func.count(func.distinct(AttendanceRecord.student_id))).where(
+                    AttendanceRecord.class_session_id == session.id
+                )
+            )
+            student_count = count_result.scalar() or 0
+            
+            # Create response with student count
+            response_data = {
+                "id": session.id,
+                "name": session.name,
+                "description": session.description,
+                "subject": session.subject,
+                "location": session.location,
+                "status": session.status,
+                "verification_code": session.verification_code,
+                "qr_data": session.qr_data,
+                "start_time": session.start_time,
+                "end_time": session.end_time,
+                "duration_minutes": session.duration_minutes,
+                "allow_late_join": session.allow_late_join,
+                "require_verification": session.require_verification,
+                "created_at": session.created_at,
+                "student_count": student_count
+            }
+            
+            response = ClassSessionResponse(**response_data)
+            session_responses.append(response)
+        
+        return session_responses
         
     except Exception as e:
         raise HTTPException(
@@ -263,6 +306,62 @@ async def regenerate_qr_code(
         )
 
 
+@router.post("/{session_id}/regenerate-code")
+async def regenerate_verification_code(
+    session_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_teacher: User = Depends(get_current_teacher)
+):
+    """Regenerate verification code for security purposes."""
+    try:
+        result = await db.execute(
+            select(ClassSession).where(
+                ClassSession.id == session_id,
+                ClassSession.teacher_id == current_teacher.id
+            )
+        )
+        session = result.scalar_one_or_none()
+        
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found or access denied"
+            )
+        
+        # Generate new verification code
+        new_verification_code = create_verification_code()
+        
+        # Update session with new verification code
+        session.verification_code = new_verification_code
+        session.updated_at = datetime.utcnow()
+        
+        # Generate new QR code with updated verification code
+        deep_link = f"attendance://join/{new_verification_code}"
+        new_qr_data = generate_class_qr_code(deep_link, session.name)
+        session.qr_data = new_qr_data
+        
+        await db.commit()
+        await db.refresh(session)
+        
+        # Generate new share link
+        share_link = f"{request.base_url}join/{new_verification_code}"
+        
+        return {
+            "verification_code": new_verification_code,
+            "share_link": share_link
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to regenerate verification code: {str(e)}"
+        )
+
+
 @router.get("/{session_id}/share-link")
 async def get_share_link(
     session_id: int,
@@ -343,4 +442,135 @@ async def end_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to end session: {str(e)}"
+        )
+
+
+@router.get("/{session_id}/members", response_model=List[UserResponse])
+async def get_session_members(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_teacher: User = Depends(get_current_teacher)
+):
+    """Get all students who have joined this class session."""
+    try:
+        result = await db.execute(
+            select(ClassSession).where(
+                ClassSession.id == session_id,
+                ClassSession.teacher_id == current_teacher.id
+            )
+        )
+        session = result.scalar_one_or_none()
+        
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found or access denied"
+            )
+        
+        # Use raw SQL to completely bypass relationship issues
+        sql = """
+        SELECT DISTINCT u.id, u.username, u.email, u.full_name, u.role, u.is_active, u.is_verified, u.created_at, u.last_login
+        FROM users u 
+        INNER JOIN attendance_records ar ON u.id = ar.student_id 
+        WHERE ar.class_session_id = :session_id
+        """
+        result = await db.execute(text(sql), {"session_id": session_id})
+        students_data = result.fetchall()
+        
+        students = []
+        for row in students_data:
+            students.append(type('Student', (), {
+                'id': row[0],
+                'username': row[1], 
+                'email': row[2],
+                'full_name': row[3],
+                'role': row[4].lower() if row[4] else 'student',  # Convert to lowercase for enum validation
+                'is_active': row[5],
+                'is_verified': row[6],
+                'created_at': row[7],
+                'last_login': row[8]
+            })())
+        
+        return [
+            UserResponse(
+                id=student.id,
+                username=student.username,
+                email=student.email,
+                full_name=student.full_name,
+                role=student.role,
+                is_active=student.is_active,
+                is_verified=student.is_verified,
+                created_at=student.created_at,
+                last_login=student.last_login
+            ) for student in students
+        ]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get session members: {str(e)}"
+        )
+
+
+@router.get("/{session_id}/enrollment-stats")
+async def get_enrollment_stats(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_teacher: User = Depends(get_current_teacher)
+):
+    """Get enrollment statistics for this class session."""
+    try:
+        result = await db.execute(
+            select(ClassSession).where(
+                ClassSession.id == session_id,
+                ClassSession.teacher_id == current_teacher.id
+            )
+        )
+        session = result.scalar_one_or_none()
+        
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found or access denied"
+            )
+        
+        # Count unique students who joined
+        result = await db.execute(
+            select(User).where(
+                User.id.in_(
+                    select(AttendanceRecord.student_id).where(
+                        AttendanceRecord.class_session_id == session_id
+                    )
+                )
+            )
+        )
+        enrolled_count = len(result.scalars().all())
+        
+        # Count attendance records (may be more than enrolled if students checked in/out multiple times)
+        result = await db.execute(
+            select(AttendanceRecord).where(
+                AttendanceRecord.class_session_id == session_id
+            )
+        )
+        total_records = len(result.scalars().all())
+        
+        return {
+            "session_id": session_id,
+            "session_name": session.name,
+            "enrolled_students": enrolled_count,
+            "total_attendance_records": total_records,
+            "session_status": session.status,
+            "created_at": session.created_at,
+            "start_time": session.start_time,
+            "end_time": session.end_time
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get enrollment stats: {str(e)}"
         )

@@ -64,6 +64,7 @@ class ClassSessionResponse(BaseModel):
     allow_late_join: bool
     require_verification: bool
     created_at: datetime
+    student_count: Optional[int] = None  # Number of unique students who joined
     
     class Config:
         from_attributes = True
