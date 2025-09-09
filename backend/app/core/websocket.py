@@ -95,6 +95,13 @@ class MessageType(Enum):
     SESSION_UPDATE = "session_update"
     SESSION_ENDED = "session_ended"
     STATS_UPDATE = "stats_update"
+    # Attendance-specific events
+    ATTENDANCE_CREATED = "attendance_created"
+    ATTENDANCE_UPDATED = "attendance_updated"
+    STUDENT_JOINED_CLASS = "student_joined_class"
+    ATTENDANCE_STATE_CHANGED = "attendance_state_changed"
+    BULK_ATTENDANCE_UPDATE = "bulk_attendance_update"
+    ATTENDANCE_STATS_UPDATE = "attendance_stats_update"
     
     # System events
     ERROR = "error"
@@ -601,6 +608,30 @@ class WebSocketServer:
             "error": error_message
         })
     
+    # Attendance-specific broadcasting methods
+    async def broadcast_attendance_created(self, class_id: str, attendance_data: Dict[str, Any]):
+        """Broadcast attendance created message to class."""
+        await self.broadcast_to_class(class_id, MessageType.ATTENDANCE_CREATED, attendance_data)
+    
+    async def broadcast_attendance_updated(self, class_id: str, attendance_data: Dict[str, Any]):
+        """Broadcast attendance updated message to class."""
+        await self.broadcast_to_class(class_id, MessageType.ATTENDANCE_UPDATED, attendance_data)
+    
+    async def broadcast_student_joined_class(self, class_id: str, join_data: Dict[str, Any]):
+        """Broadcast student joined class message to class."""
+        await self.broadcast_to_class(class_id, MessageType.STUDENT_JOINED_CLASS, join_data)
+    
+    async def broadcast_attendance_state_changed(self, class_id: str, state_data: Dict[str, Any]):
+        """Broadcast general attendance state change message to class."""
+        await self.broadcast_to_class(class_id, MessageType.ATTENDANCE_STATE_CHANGED, state_data)
+    
+    async def broadcast_bulk_attendance_update(self, class_id: str, bulk_data: Dict[str, Any]):
+        """Broadcast bulk attendance update message to class."""
+        await self.broadcast_to_class(class_id, MessageType.BULK_ATTENDANCE_UPDATE, bulk_data)
+    
+    async def broadcast_attendance_stats_update(self, class_id: str, stats_data: Dict[str, Any]):
+        """Broadcast attendance statistics update message to class."""
+        await self.broadcast_to_class(class_id, MessageType.ATTENDANCE_STATS_UPDATE, stats_data)
     def get_health_status(self) -> Dict[str, Any]:
         """Get server health status and metrics."""
         stats = self.connection_pool.get_stats()
