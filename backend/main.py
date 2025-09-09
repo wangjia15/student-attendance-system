@@ -10,7 +10,7 @@ from app.core.database import init_db, get_db
 from app.core.auth import get_current_user
 from app.models.user import User
 from sqlalchemy.ext.asyncio import AsyncSession
-# from app.core.websocket import websocket_server
+from app.core.websocket import websocket_server
 from app.api.v1 import classes, auth, attendance, admin  # Admin module for system management
 # from app.api.v1 import sis  # Temporarily disabled due to missing integration modules
 from app.websocket.live_updates import manager
@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     yield
     
     # Cleanup WebSocket server
-    # await websocket_server.shutdown()
+    await websocket_server.shutdown()
 
 
 app = FastAPI(
@@ -60,21 +60,21 @@ app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 app.websocket("/ws/{class_id}")(manager.websocket_endpoint)  # Legacy endpoint
 
 # New production WebSocket endpoint with enhanced features
-# @app.websocket("/ws/v2/{connection_id}")
-# async def websocket_endpoint_v2(websocket: WebSocket, connection_id: str):
-#     """Enhanced WebSocket endpoint with production features."""
-#     success = await websocket_server.connect(websocket, connection_id)
-#     
-#     if success:
-#         try:
-#             while True:
-#                 message = await websocket.receive_text()
-#                 await websocket_server.handle_message(connection_id, message)
-#         except WebSocketDisconnect:
-#             await websocket_server.disconnect(connection_id)
-#         except Exception as e:
-#             logger.error(f"WebSocket error for {connection_id}: {e}")
-#             await websocket_server.disconnect(connection_id)
+@app.websocket("/ws/v2/{connection_id}")
+async def websocket_endpoint_v2(websocket: WebSocket, connection_id: str):
+    """Enhanced WebSocket endpoint with production features."""
+    success = await websocket_server.connect(websocket, connection_id)
+    
+    if success:
+        try:
+            while True:
+                message = await websocket.receive_text()
+                await websocket_server.handle_message(connection_id, message)
+        except WebSocketDisconnect:
+            await websocket_server.disconnect(connection_id)
+        except Exception as e:
+            logger.error(f"WebSocket error for {connection_id}: {e}")
+            await websocket_server.disconnect(connection_id)
 
 
 @app.get("/")
@@ -90,7 +90,7 @@ async def health_check():
 @app.get("/health/websocket")
 async def websocket_health():
     """Get WebSocket server health and metrics."""
-    return {"status": "websocket_disabled"}
+    return websocket_server.get_health_status()
 
 
 # Simple test endpoint 
