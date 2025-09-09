@@ -15,6 +15,7 @@ from app.api.v1 import classes, auth, attendance, admin  # Admin module for syst
 # from app.api.v1 import sis  # Temporarily disabled due to missing integration modules
 from app.websocket.live_updates import manager
 from app.websocket.event_handlers import attendance_event_handler
+from app.websocket.attendance_updates import attendance_ws_manager
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,20 @@ app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 
 # WebSocket endpoints
 app.websocket("/ws/{class_id}")(manager.websocket_endpoint)  # Legacy endpoint
+
+# Attendance WebSocket endpoint with authentication and connection management
+@app.websocket("/ws/attendance/{class_id}")
+async def attendance_websocket_endpoint(websocket: WebSocket, class_id: int, token: str = None):
+    """
+    WebSocket endpoint for real-time attendance updates.
+    
+    Args:
+        websocket: WebSocket connection
+        class_id: Class session ID for attendance tracking
+        token: JWT token for authentication (passed as query parameter)
+    """
+    await attendance_ws_manager.websocket_endpoint(websocket, class_id, token)
+
 
 # New production WebSocket endpoint with enhanced features
 @app.websocket("/ws/v2/{connection_id}")
