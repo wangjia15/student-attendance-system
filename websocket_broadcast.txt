@@ -1,0 +1,21 @@
+        
+        # WebSocket broadcast for attendance created
+        try:
+            await websocket_server.broadcast_to_class(
+                str(session.id),
+                MessageType.STUDENT_JOINED,
+                {
+                    "student_id": current_user.id,
+                    "student_name": current_user.full_name or current_user.username,
+                    "class_session_id": session.id,
+                    "class_name": session.name,
+                    "attendance_status": attendance_record.status.value,
+                    "check_in_time": attendance_record.check_in_time.isoformat() if attendance_record.check_in_time else None,
+                    "is_late": attendance_record.is_late,
+                    "late_minutes": attendance_record.late_minutes,
+                    "verification_method": "qr_code"
+                }
+            )
+        except Exception as ws_error:
+            logger.error(f"WebSocket broadcast failed: {ws_error}")
+            # Continue with response even if WebSocket fails

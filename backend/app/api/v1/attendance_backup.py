@@ -8,117 +8,26 @@ from sqlalchemy.orm import joinedload
 from datetime import datetime
 from typing import Optional, List
 import logging
-import asyncio
 
 logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.auth import get_current_user, decode_token
 from app.core.security import verify_verification_code
-from app.core.websocket import websocket_server, MessageType
 from app.models.user import User, UserRole
 from app.models.class_session import ClassSession, StudentEnrollment
 from app.models.attendance import AttendanceRecord, AttendanceStatus, AttendanceAuditLog
 from app.services.attendance_engine import AttendanceEngine
-from app.core.websocket import websocket_server, MessageType
-from app.websocket.attendance_updates import attendance_ws_manager
 from app.schemas.attendance import (
     StudentJoinRequest, AttendanceResponse, StudentJoinResponse,
     VerificationCodeJoinRequest, StudentCheckInRequest,
     TeacherOverrideRequest, BulkAttendanceRequest, BulkAttendanceResponse,
     ClassAttendanceReport, AttendanceStats, StudentAttendancePattern,
     AttendanceAlert, ClassAttendanceStatus, AttendanceAuditLogResponse,
-    AttendancePatternRequest, AttendanceStatusUpdate
+    AttendancePatternRequest
 )
 
 router = APIRouter()
-
-
-async def broadcast_attendance_event(
-    event_type: str,
-    class_session_id: int,
-    attendance_record: AttendanceRecord,
-    student_name: str,
-    updated_by_name: str,
-    old_status: Optional[AttendanceStatus] = None,
-    is_creation: bool = False
-):
-    """
-    Utility function to broadcast attendance events via WebSocket.
-    Ensures broadcasts don't affect REST API performance by running in background.
-    
-    Args:
-        event_type: Type of event ("attendance_created", "attendance_updated", "student_joined_class")
-        class_session_id: ID of the class session
-        attendance_record: The attendance record
-        student_name: Name of the student
-        updated_by_name: Name of the user who made the change
-        old_status: Previous status (for updates)
-        is_creation: Whether this is a new record creation
-    """
-    try:
-        # Create broadcast tasks to run in background
-        async def broadcast_tasks():
-            try:
-                # Broadcast using the modern WebSocket server
-                message_data = {
-                    "event_type": event_type,
-                    "attendance_record": {
-                        "id": attendance_record.id,
-                        "student_id": attendance_record.student_id,
-                        "student_name": student_name,
-                        "class_session_id": class_session_id,
-                        "status": attendance_record.status.value,
-                        "old_status": old_status.value if old_status else None,
-                        "check_in_time": attendance_record.check_in_time.isoformat() if attendance_record.check_in_time else None,
-                        "is_late": attendance_record.is_late,
-                        "late_minutes": attendance_record.late_minutes,
-                        "verification_method": attendance_record.verification_method,
-                        "is_manual_override": attendance_record.is_manual_override,
-                        "override_reason": attendance_record.override_reason,
-                        "updated_by_name": updated_by_name,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                }
-                
-                # Broadcast to class using modern WebSocket server
-                message_type = MessageType.ATTENDANCE_UPDATE
-                if is_creation and event_type == "student_joined_class":
-                    message_type = MessageType.STUDENT_JOINED
-                
-                await websocket_server.broadcast_to_class(
-                    str(class_session_id),
-                    message_type,
-                    message_data
-                )
-                
-                # Also use the attendance-specific WebSocket manager for backwards compatibility
-                if event_type in ["attendance_created", "attendance_updated"]:
-                    await attendance_ws_manager.notify_attendance_change(
-                        class_session_id=class_session_id,
-                        student_id=attendance_record.student_id,
-                        student_name=student_name,
-                        old_status=old_status,
-                        new_status=attendance_record.status,
-                        updated_by=attendance_record.student_id if is_creation else (attendance_record.override_by_teacher_id or attendance_record.student_id),
-                        updated_by_name=updated_by_name,
-                        reason=attendance_record.override_reason,
-                        is_override=attendance_record.is_manual_override or False,
-                        late_minutes=attendance_record.late_minutes
-                    )
-                
-                logger.info(f"Successfully broadcast {event_type} for student {attendance_record.student_id} in class {class_session_id}")
-                
-            except Exception as e:
-                # Log error but don't raise - broadcasts should not affect API responses
-                logger.error(f"Failed to broadcast {event_type} for student {attendance_record.student_id}: {str(e)}")
-        
-        # Schedule broadcast to run in background
-        asyncio.create_task(broadcast_tasks())
-        
-    except Exception as e:
-        # Log error but don't raise - broadcasts should not affect API responses
-        logger.error(f"Failed to create broadcast task for {event_type}: {str(e)}")
 
 
 @router.post("/check-in/qr", response_model=StudentJoinResponse)
@@ -185,50 +94,6 @@ async def student_check_in_qr(
         existing = existing_record.scalar_one_or_none()
         
         if existing and existing.check_in_time:
-
-        # WebSocket broadcast for attendance created
-        try:
-            await websocket_server.broadcast_to_class(
-                str(session.id),
-                MessageType.STUDENT_JOINED,
-                {
-                    "student_id": current_user.id,
-                    "student_name": current_user.full_name or current_user.username,
-                    "class_session_id": session.id,
-                    "class_name": session.name,
-                    "attendance_status": attendance_record.status.value,
-                    "check_in_time": attendance_record.check_in_time.isoformat() if attendance_record.check_in_time else None,
-                    "is_late": attendance_record.is_late,
-                    "late_minutes": attendance_record.late_minutes,
-                    "verification_method": "qr_code"
-                }
-            )
-        except Exception as ws_error:
-            logger.error(f"WebSocket broadcast failed: {ws_error}")
-            # Continue with response even if WebSocket fails
-
-
-        # WebSocket broadcast for attendance created
-        try:
-            await websocket_server.broadcast_to_class(
-                str(session.id),
-                MessageType.STUDENT_JOINED,
-                {
-                    "student_id": current_user.id,
-                    "student_name": current_user.full_name or current_user.username,
-                    "class_session_id": session.id,
-                    "class_name": session.name,
-                    "attendance_status": attendance_record.status.value,
-                    "check_in_time": attendance_record.check_in_time.isoformat() if attendance_record.check_in_time else None,
-                    "is_late": attendance_record.is_late,
-                    "late_minutes": attendance_record.late_minutes,
-                    "verification_method": "qr_code"
-                }
-            )
-        except Exception as ws_error:
-            logger.error(f"WebSocket broadcast failed: {ws_error}")
-            # Continue with response even if WebSocket fails
-
             return StudentJoinResponse(
                 success=True,
                 message="Already checked in to this class",
@@ -306,26 +171,6 @@ async def student_check_in_qr(
         await db.commit()
         await db.refresh(attendance_record)
         
-        # WebSocket broadcast for QR check-in
-        try:
-            await websocket_server.broadcast_to_class(
-                str(session.id),
-                MessageType.STUDENT_JOINED,
-                {
-                    "student_id": current_user.id,
-                    "student_name": current_user.full_name or current_user.username,
-                    "class_session_id": session.id,
-                    "class_name": session.name,
-                    "attendance_status": attendance_record.status.value,
-                    "check_in_time": attendance_record.check_in_time.isoformat() if attendance_record.check_in_time else None,
-                    "is_late": attendance_record.is_late,
-                    "late_minutes": attendance_record.late_minutes,
-                    "verification_method": "qr_code"
-                }
-            )
-        except Exception as e:
-            logger.error(f"WebSocket broadcast failed: {e}")
-        
         status_message = "Successfully checked in"
         if attendance_record.is_late:
             status_message = f"Checked in late ({attendance_record.late_minutes} minutes)"
@@ -399,50 +244,6 @@ async def student_check_in_code(
         existing = existing_record.scalar_one_or_none()
         
         if existing and existing.check_in_time:
-
-        # WebSocket broadcast for attendance created
-        try:
-            await websocket_server.broadcast_to_class(
-                str(session.id),
-                MessageType.STUDENT_JOINED,
-                {
-                    "student_id": current_user.id,
-                    "student_name": current_user.full_name or current_user.username,
-                    "class_session_id": session.id,
-                    "class_name": session.name,
-                    "attendance_status": attendance_record.status.value,
-                    "check_in_time": attendance_record.check_in_time.isoformat() if attendance_record.check_in_time else None,
-                    "is_late": attendance_record.is_late,
-                    "late_minutes": attendance_record.late_minutes,
-                    "verification_method": "verification_code"
-                }
-            )
-        except Exception as ws_error:
-            logger.error(f"WebSocket broadcast failed: {ws_error}")
-            # Continue with response even if WebSocket fails
-
-
-        # WebSocket broadcast for attendance created
-        try:
-            await websocket_server.broadcast_to_class(
-                str(session.id),
-                MessageType.STUDENT_JOINED,
-                {
-                    "student_id": current_user.id,
-                    "student_name": current_user.full_name or current_user.username,
-                    "class_session_id": session.id,
-                    "class_name": session.name,
-                    "attendance_status": attendance_record.status.value,
-                    "check_in_time": attendance_record.check_in_time.isoformat() if attendance_record.check_in_time else None,
-                    "is_late": attendance_record.is_late,
-                    "late_minutes": attendance_record.late_minutes,
-                    "verification_method": "verification_code"
-                }
-            )
-        except Exception as ws_error:
-            logger.error(f"WebSocket broadcast failed: {ws_error}")
-            # Continue with response even if WebSocket fails
-
             return StudentJoinResponse(
                 success=True,
                 message="Already checked in to this class",
@@ -519,26 +320,6 @@ async def student_check_in_code(
         
         await db.commit()
         await db.refresh(attendance_record)
-        
-        # WebSocket broadcast for verification code check-in
-        try:
-            await websocket_server.broadcast_to_class(
-                str(session.id),
-                MessageType.STUDENT_JOINED,
-                {
-                    "student_id": current_user.id,
-                    "student_name": current_user.full_name or current_user.username,
-                    "class_session_id": session.id,
-                    "class_name": session.name,
-                    "attendance_status": attendance_record.status.value,
-                    "check_in_time": attendance_record.check_in_time.isoformat() if attendance_record.check_in_time else None,
-                    "is_late": attendance_record.is_late,
-                    "late_minutes": attendance_record.late_minutes,
-                    "verification_method": "verification_code"
-                }
-            )
-        except Exception as e:
-            logger.error(f"WebSocket broadcast failed: {e}")
         
         status_message = "Successfully checked in"
         if attendance_record.is_late:
@@ -744,24 +525,6 @@ async def teacher_override_attendance(
         await db.commit()
         await db.refresh(attendance_record)
         
-        # WebSocket broadcast for teacher override
-        try:
-            await websocket_server.broadcast_to_class(
-                str(class_session_id),
-                MessageType.ATTENDANCE_UPDATE,
-                {
-                    "student_id": override_data.student_id,
-                    "class_session_id": class_session_id,
-                    "attendance_status": attendance_record.status.value,
-                    "is_manual_override": True,
-                    "override_reason": override_data.reason,
-                    "updated_by": current_user.full_name or current_user.username,
-                    "verification_method": "teacher_override"
-                }
-            )
-        except Exception as e:
-            logger.error(f"WebSocket broadcast failed: {e}")
-        
         return {
             "success": True,
             "message": f"Attendance overridden to {override_data.new_status.value}",
@@ -827,23 +590,6 @@ async def bulk_attendance_operations(
         )
         
         await db.commit()
-        
-        # WebSocket broadcast for bulk operation
-        try:
-            await websocket_server.broadcast_to_class(
-                str(bulk_data.class_session_id),
-                MessageType.ATTENDANCE_UPDATE,
-                {
-                    "bulk_operation": bulk_data.operation.value,
-                    "class_session_id": bulk_data.class_session_id,
-                    "processed_count": result["processed_count"],
-                    "failed_count": result["failed_count"],
-                    "updated_by": current_user.full_name or current_user.username,
-                    "reason": bulk_data.reason
-                }
-            )
-        except Exception as e:
-            logger.error(f"WebSocket broadcast failed: {e}")
         
         return BulkAttendanceResponse(
             success=result["failed_count"] == 0,

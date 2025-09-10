@@ -196,3 +196,122 @@ class AttendanceRecordUpdate(BaseModel):
     status: Optional[AttendanceStatus] = None
     check_out_time: Optional[datetime] = None
     notes: Optional[str] = None
+
+
+# WebSocket Message Schemas
+class WebSocketMessageBase(BaseModel):
+    """Base schema for all WebSocket messages."""
+    type: str = Field(..., description="Message type identifier")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now())
+    class_id: str = Field(..., description="Class session ID for message routing")
+
+
+class AttendanceCreatedMessage(WebSocketMessageBase):
+    """Message sent when a new attendance record is created."""
+    type: str = Field(default="attendance_created", const=True)
+    data: Dict[str, Any] = Field(..., description="Attendance record data")
+    student_id: int = Field(..., description="Student ID for authorization")
+    student_name: str = Field(..., description="Student name for display")
+    status: AttendanceStatus = Field(..., description="New attendance status")
+    verification_method: Optional[str] = Field(None, description="How attendance was recorded")
+    is_late: bool = Field(default=False, description="Whether student was late")
+    late_minutes: int = Field(default=0, description="Minutes late if applicable")
+
+
+class AttendanceUpdatedMessage(WebSocketMessageBase):
+    """Message sent when an attendance record is updated."""
+    type: str = Field(default="attendance_updated", const=True)
+    data: Dict[str, Any] = Field(..., description="Updated attendance record data")
+    attendance_id: int = Field(..., description="Attendance record ID")
+    student_id: int = Field(..., description="Student ID for authorization")
+    student_name: str = Field(..., description="Student name for display")
+    old_status: AttendanceStatus = Field(..., description="Previous attendance status")
+    new_status: AttendanceStatus = Field(..., description="New attendance status")
+    updated_by: str = Field(..., description="User who made the update")
+    reason: Optional[str] = Field(None, description="Reason for the update")
+    is_manual_override: bool = Field(default=False, description="Whether this was a manual override")
+
+
+class StudentJoinedClassMessage(WebSocketMessageBase):
+    """Message sent when a student successfully joins a class."""
+    type: str = Field(default="student_joined_class", const=True)
+    data: Dict[str, Any] = Field(..., description="Join event data")
+    student_id: int = Field(..., description="Student ID for authorization")
+    student_name: str = Field(..., description="Student name for display")
+    join_time: datetime = Field(..., description="When the student joined")
+    verification_method: str = Field(..., description="How the student joined (qr_code, verification_code, manual)")
+    attendance_status: AttendanceStatus = Field(..., description="Initial attendance status")
+    is_late: bool = Field(default=False, description="Whether student was late")
+    late_minutes: int = Field(default=0, description="Minutes late if applicable")
+
+
+class AttendanceStateChangedMessage(WebSocketMessageBase):
+    """General message for any attendance state changes."""
+    type: str = Field(default="attendance_state_changed", const=True)
+    data: Dict[str, Any] = Field(..., description="State change data")
+    change_type: str = Field(..., description="Type of change (created, updated, bulk_update, etc.)")
+    affected_students: List[int] = Field(..., description="List of affected student IDs")
+    stats: Optional[Dict[str, int]] = Field(None, description="Updated class attendance statistics")
+    updated_by: str = Field(..., description="User who triggered the change")
+
+
+class BulkAttendanceUpdateMessage(WebSocketMessageBase):
+    """Message sent when bulk attendance operations are performed."""
+    type: str = Field(default="bulk_attendance_update", const=True)
+    data: Dict[str, Any] = Field(..., description="Bulk update data")
+    operation: str = Field(..., description="Type of bulk operation performed")
+    affected_students: List[Dict[str, Any]] = Field(..., description="List of affected students with their new status")
+    processed_count: int = Field(..., description="Number of records processed")
+    updated_by: str = Field(..., description="Teacher who performed the bulk update")
+    reason: str = Field(..., description="Reason for the bulk update")
+
+
+class AttendanceStatsUpdateMessage(WebSocketMessageBase):
+    """Message sent when attendance statistics need to be updated."""
+    type: str = Field(default="attendance_stats_update", const=True)
+    data: Dict[str, Any] = Field(..., description="Updated statistics data")
+    stats: AttendanceStats = Field(..., description="Current attendance statistics")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now())
+
+
+# WebSocket Authorization Helpers
+class WebSocketAuthContext(BaseModel):
+    """Context for WebSocket message authorization."""
+    user_id: str = Field(..., description="User making the request")
+    user_type: str = Field(..., description="Type of user (teacher, student, admin)")
+    class_id: str = Field(..., description="Class session ID")
+    is_teacher: bool = Field(default=False, description="Whether user is a teacher for this class")
+    is_student_in_class: bool = Field(default=False, description="Whether user is a student in this class")
+    can_view_all_students: bool = Field(default=False, description="Whether user can view all student data")
+
+
+def authorize_attendance_message(message: WebSocketMessageBase, auth_context: WebSocketAuthContext) -> bool:
+    """
+    Authorize WebSocket attendance messages based on user permissions.
+    
+    Args:
+        message: The WebSocket message to authorize
+        auth_context: The authorization context for the user
+    
+    Returns:
+        bool: True if user is authorized to receive this message
+    """
+    # Teachers can see all attendance updates for their classes
+    if auth_context.is_teacher and auth_context.class_id == message.class_id:
+        return True
+    
+    # Students can only see their own attendance updates
+    if auth_context.user_type == "student" and auth_context.is_student_in_class:
+        # For student-specific messages, check if it's about them
+        if hasattr(message, 'student_id'):
+            return str(message.student_id) == auth_context.user_id
+        
+        # For general messages, students can see class-level stats but not individual student data
+        if message.type in ["attendance_stats_update", "attendance_state_changed"]:
+            return True
+    
+    # Admins can see all messages
+    if auth_context.user_type == "admin":
+        return True
+    
+    return False
