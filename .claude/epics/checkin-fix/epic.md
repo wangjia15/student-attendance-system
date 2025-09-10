@@ -2,7 +2,7 @@
 name: checkin-fix
 status: backlog
 created: 2025-09-09T14:39:18Z
-progress: 12%
+progress: 50%
 prd: .claude/prds/checkin-fix.md
 github: https://github.com/wangjia15/student-attendance-system/issues/10
 ---
