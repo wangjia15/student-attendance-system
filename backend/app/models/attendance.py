@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum, Text, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -43,6 +43,9 @@ class AttendanceRecord(Base):
     late_minutes = Column(Integer, default=0)
     grace_period_used = Column(Boolean, default=False)
     
+    # Optimistic locking
+    version = Column(Integer, default=1, nullable=False)
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -51,6 +54,18 @@ class AttendanceRecord(Base):
     student = relationship("User", back_populates="attendance_records", foreign_keys=[student_id], overlaps="override_teacher")
     class_session = relationship("ClassSession", back_populates="attendance_records")
     override_teacher = relationship("User", foreign_keys=[override_by_teacher_id], overlaps="student")
+    
+    # Composite indexes for optimized queries
+    __table_args__ = (
+        # Primary lookup pattern: finding attendance for a specific student in a specific session
+        Index('idx_attendance_session_student', 'class_session_id', 'student_id'),
+        # Time-based queries: finding attendance records for a session ordered by check-in time
+        Index('idx_attendance_session_checkin', 'class_session_id', 'check_in_time'),
+        # Student attendance history: finding all attendance records for a student over time
+        Index('idx_attendance_student_created', 'student_id', 'created_at'),
+        # Note: Unique constraint will be added later after data cleanup
+        # Index('idx_attendance_unique_session_student', 'class_session_id', 'student_id', unique=True),
+    )
 
 
 class AttendanceAuditLog(Base):

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Enum as SQLEnum, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -25,6 +25,14 @@ class Class(Base):
     
     # Relationships
     teacher = relationship("User", foreign_keys=[teacher_id])
+    
+    # Database indexes for optimized queries
+    __table_args__ = (
+        # Teacher's classes - common query pattern
+        Index('idx_class_teacher_created', 'teacher_id', 'created_at'),
+        # SIS integration lookups
+        Index('idx_class_sis_id', 'sis_class_id'),
+    )
 
 
 class StudentEnrollment(Base):
@@ -50,6 +58,18 @@ class StudentEnrollment(Base):
     # Relationships
     student = relationship("User", foreign_keys=[student_id])
     class_ = relationship("Class", foreign_keys=[class_id])
+    
+    # Database indexes for optimized queries
+    __table_args__ = (
+        # Student's enrollments - common query pattern
+        Index('idx_enrollment_student_active', 'student_id', 'is_active'),
+        # Class enrollments - finding all students in a class
+        Index('idx_enrollment_class_active', 'class_id', 'is_active'),
+        # Unique enrollment constraint
+        Index('idx_enrollment_unique_student_class', 'student_id', 'class_id', unique=True),
+        # SIS integration lookups
+        Index('idx_enrollment_sis_id', 'sis_enrollment_id'),
+    )
 
 
 # Removed SessionStatus enum - using string literals instead
@@ -117,3 +137,15 @@ class ClassSession(Base):
     def class_name(self) -> str:
         """Get class name for analytics compatibility."""
         return self.name
+    
+    # Database indexes for optimized queries
+    __table_args__ = (
+        # Teacher's active sessions - most common query pattern
+        Index('idx_class_session_teacher_status', 'teacher_id', 'status'),
+        # Time-based queries for session management
+        Index('idx_class_session_start_time', 'start_time'),
+        # Class-based session history
+        Index('idx_class_session_class_created', 'class_id', 'created_at'),
+        # Active sessions within time range
+        Index('idx_class_session_status_time', 'status', 'start_time', 'end_time'),
+    )
