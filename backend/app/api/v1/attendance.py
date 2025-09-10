@@ -306,6 +306,26 @@ async def student_check_in_qr(
         await db.commit()
         await db.refresh(attendance_record)
         
+        # WebSocket broadcast for QR check-in
+        try:
+            await websocket_server.broadcast_to_class(
+                str(session.id),
+                MessageType.STUDENT_JOINED,
+                {
+                    "student_id": current_user.id,
+                    "student_name": current_user.full_name or current_user.username,
+                    "class_session_id": session.id,
+                    "class_name": session.name,
+                    "attendance_status": attendance_record.status.value,
+                    "check_in_time": attendance_record.check_in_time.isoformat() if attendance_record.check_in_time else None,
+                    "is_late": attendance_record.is_late,
+                    "late_minutes": attendance_record.late_minutes,
+                    "verification_method": "qr_code"
+                }
+            )
+        except Exception as e:
+            logger.error(f"WebSocket broadcast failed: {e}")
+        
         status_message = "Successfully checked in"
         if attendance_record.is_late:
             status_message = f"Checked in late ({attendance_record.late_minutes} minutes)"
@@ -499,6 +519,26 @@ async def student_check_in_code(
         
         await db.commit()
         await db.refresh(attendance_record)
+        
+        # WebSocket broadcast for verification code check-in
+        try:
+            await websocket_server.broadcast_to_class(
+                str(session.id),
+                MessageType.STUDENT_JOINED,
+                {
+                    "student_id": current_user.id,
+                    "student_name": current_user.full_name or current_user.username,
+                    "class_session_id": session.id,
+                    "class_name": session.name,
+                    "attendance_status": attendance_record.status.value,
+                    "check_in_time": attendance_record.check_in_time.isoformat() if attendance_record.check_in_time else None,
+                    "is_late": attendance_record.is_late,
+                    "late_minutes": attendance_record.late_minutes,
+                    "verification_method": "verification_code"
+                }
+            )
+        except Exception as e:
+            logger.error(f"WebSocket broadcast failed: {e}")
         
         status_message = "Successfully checked in"
         if attendance_record.is_late:
@@ -704,6 +744,24 @@ async def teacher_override_attendance(
         await db.commit()
         await db.refresh(attendance_record)
         
+        # WebSocket broadcast for teacher override
+        try:
+            await websocket_server.broadcast_to_class(
+                str(class_session_id),
+                MessageType.ATTENDANCE_UPDATE,
+                {
+                    "student_id": override_data.student_id,
+                    "class_session_id": class_session_id,
+                    "attendance_status": attendance_record.status.value,
+                    "is_manual_override": True,
+                    "override_reason": override_data.reason,
+                    "updated_by": current_user.full_name or current_user.username,
+                    "verification_method": "teacher_override"
+                }
+            )
+        except Exception as e:
+            logger.error(f"WebSocket broadcast failed: {e}")
+        
         return {
             "success": True,
             "message": f"Attendance overridden to {override_data.new_status.value}",
@@ -769,6 +827,23 @@ async def bulk_attendance_operations(
         )
         
         await db.commit()
+        
+        # WebSocket broadcast for bulk operation
+        try:
+            await websocket_server.broadcast_to_class(
+                str(bulk_data.class_session_id),
+                MessageType.ATTENDANCE_UPDATE,
+                {
+                    "bulk_operation": bulk_data.operation.value,
+                    "class_session_id": bulk_data.class_session_id,
+                    "processed_count": result["processed_count"],
+                    "failed_count": result["failed_count"],
+                    "updated_by": current_user.full_name or current_user.username,
+                    "reason": bulk_data.reason
+                }
+            )
+        except Exception as e:
+            logger.error(f"WebSocket broadcast failed: {e}")
         
         return BulkAttendanceResponse(
             success=result["failed_count"] == 0,
