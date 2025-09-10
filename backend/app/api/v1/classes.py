@@ -6,11 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
 from typing import List
 from datetime import datetime, timedelta
+import logging
 
 from app.core.database import get_db
 from app.core.auth import get_current_teacher
 from app.core.security import create_class_token, create_verification_code
 from app.core.config import settings
+from app.core.websocket import websocket_server, MessageType
 from app.services.qr_generator import generate_class_qr_code
 from app.models.user import User
 from app.models.class_session import ClassSession
@@ -22,6 +24,7 @@ from app.schemas.class_session import (
 from app.schemas.auth import UserResponse
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def session_to_response(session: ClassSession, include_student_count: bool = False) -> ClassSessionResponse:
@@ -344,6 +347,23 @@ async def regenerate_verification_code(
         await db.commit()
         await db.refresh(session)
         
+        # Broadcast verification code update to connected clients
+        try:
+            await websocket_server.broadcast_to_class(
+                str(session_id),
+                MessageType.SESSION_UPDATE,
+                {
+                    "session_id": session_id,
+                    "event": "verification_code_regenerated",
+                    "verification_code": new_verification_code,
+                    "qr_data": new_qr_data,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+            logger.info(f"Broadcasted verification code update for session {session_id}")
+        except Exception as ws_error:
+            logger.warning(f"Failed to broadcast verification code update: {ws_error}")
+        
         # Generate new share link
         share_link = f"{request.base_url}join/{new_verification_code}"
         
@@ -573,4 +593,154 @@ async def get_enrollment_stats(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get enrollment stats: {str(e)}"
+        )
+
+@router.post("/join/{verification_code}")
+async def student_join_class(
+    verification_code: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Enhanced student class joining with real-time WebSocket feedback."""
+    try:
+        # Enhanced verification code validation
+        if not verification_code or len(verification_code) != 6 or not verification_code.isdigit():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid verification code format. Must be 6 digits."
+            )
+        
+        # Find the class session with this verification code
+        result = await db.execute(
+            select(ClassSession).where(
+                ClassSession.verification_code == verification_code,
+                ClassSession.status == "active"
+            )
+        )
+        session = result.scalar_one_or_none()
+        
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Invalid verification code or class has ended"
+            )
+        
+        # Check if late join is allowed
+        if not session.allow_late_join:
+            session_duration = datetime.utcnow() - session.start_time
+            if session_duration.total_seconds() > 900:  # 15 minutes
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Late join not allowed for this class"
+                )
+        
+        # Check if student already joined
+        existing_record = await db.execute(
+            select(AttendanceRecord).where(
+                AttendanceRecord.student_id == current_user.id,
+                AttendanceRecord.class_session_id == session.id
+            )
+        )
+        existing = existing_record.scalar_one_or_none()
+        
+        if existing and existing.check_in_time:
+            # Broadcast student already in class
+            try:
+                await websocket_server.broadcast_to_class(
+                    str(session.id),
+                    MessageType.STUDENT_JOINED,
+                    {
+                        "student_id": current_user.id,
+                        "student_name": current_user.full_name or current_user.username,
+                        "session_id": session.id,
+                        "event": "student_already_joined",
+                        "join_time": existing.check_in_time.isoformat(),
+                        "is_late": existing.is_late or False,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                )
+            except Exception as ws_error:
+                logger.warning(f"Failed to broadcast student already joined: {ws_error}")
+            
+            return {
+                "success": True,
+                "message": "Already joined this class",
+                "class_session_id": session.id,
+                "class_name": session.name,
+                "join_time": existing.check_in_time,
+                "already_joined": True
+            }
+        
+        # Create new attendance record (simplified - this would integrate with attendance.py logic)
+        check_in_time = datetime.utcnow()
+        is_late = check_in_time > session.start_time + timedelta(minutes=10)
+        late_minutes = max(0, int((check_in_time - session.start_time).total_seconds() / 60) - 10) if is_late else 0
+        
+        if existing:
+            existing.check_in_time = check_in_time
+            existing.is_late = is_late
+            existing.late_minutes = late_minutes
+            existing.verification_method = "verification_code"
+            attendance_record = existing
+        else:
+            # This should use the AttendanceEngine from attendance.py
+            attendance_record = AttendanceRecord(
+                student_id=current_user.id,
+                class_session_id=session.id,
+                check_in_time=check_in_time,
+                verification_method="verification_code",
+                is_late=is_late,
+                late_minutes=late_minutes,
+                status="present"
+            )
+            db.add(attendance_record)
+        
+        await db.commit()
+        await db.refresh(attendance_record)
+        
+        # Broadcast student_joined_class message
+        try:
+            await websocket_server.broadcast_to_class(
+                str(session.id),
+                MessageType.STUDENT_JOINED,
+                {
+                    "student_id": current_user.id,
+                    "student_name": current_user.full_name or current_user.username,
+                    "session_id": session.id,
+                    "event": "student_joined_class",
+                    "join_time": check_in_time.isoformat(),
+                    "is_late": is_late,
+                    "late_minutes": late_minutes,
+                    "verification_method": "verification_code",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+            logger.info(f"Broadcasted student_joined_class for student {current_user.id} in session {session.id}")
+        except Exception as ws_error:
+            logger.warning(f"Failed to broadcast student_joined_class: {ws_error}")
+        
+        status_message = "Successfully joined class"
+        if is_late:
+            status_message = f"Joined class late ({late_minutes} minutes)"
+        
+        return {
+            "success": True,
+            "message": f"{status_message}: {session.name}",
+            "class_session_id": session.id,
+            "class_name": session.name,
+            "join_time": check_in_time,
+            "is_late": is_late,
+            "late_minutes": late_minutes,
+            "already_joined": False
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error in student_join_class: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to join class: {str(e)}"
         )
